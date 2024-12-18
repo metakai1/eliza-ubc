@@ -5,3 +5,4 @@ packages:
     - "web-agent"
     - "agent"
     - "plugin-calculator"
+    - "plugin-ubc"
