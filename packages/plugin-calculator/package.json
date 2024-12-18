@@ -1,0 +1,20 @@
+{
+    "name": "@ai16z/plugin-calculator",
+    "version": "0.0.1",
+    "description": "A calculator plugin for Eliza",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "type": "module",
+    "dependencies": {
+        "@ai16z/eliza": "workspace:*"
+    },
+    "scripts": {
+        "build": "tsc"
+    },
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    }
+}
