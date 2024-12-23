@@ -42,6 +42,7 @@ import {
     canSendMessage,
     cosineSimilarity,
 } from "./utils.ts";
+import { logPrompt } from "./promptLogger.ts";
 
 interface MessageContext {
     content: string;
@@ -383,11 +384,11 @@ export class MessageManager {
             if (shouldRespond) {
                 const context = composeContext({
                     state,
-                    template:
-                        this.runtime.character.templates
-                            ?.discordMessageHandlerTemplate ||
-                        discordMessageHandlerTemplate,
+                    template: discordMessageHandlerTemplate
                 });
+
+                // Use the existing promptLogger
+                await logPrompt(context, 'DiscordMessageHandler');
 
                 const responseContent = await this._generateResponse(
                     memory,

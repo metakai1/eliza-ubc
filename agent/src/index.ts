@@ -59,9 +59,37 @@ import path from "path";
 import { fileURLToPath } from "url";
 import yargs from "yargs";
 import calculatorPlugin from "@ai16z/plugin-calculator";
+import { loadProperties } from "./propertyLoader";
+
+// Example property data
+const properties = [
+    {
+      address: "123 Main St",
+      price: "$500,000",
+      bedrooms: 3,
+      description: "A beautiful 3-bedroom house with a spacious backyard.",
+    },
+    {
+      address: "456 Elm St",
+      price: "$750,000",
+      bedrooms: 4,
+      description: "A luxurious 4-bedroom home with a modern design.",
+    },
+  ];
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
+
+// Call the loadProperties function
+(async () => {
+    try {
+      console.log("Loading properties into the database...");
+      await loadProperties(properties); // Pass the properties array to the function
+      console.log("Properties loaded successfully!");
+    } catch (error) {
+      console.error("Error loading properties:", error);
+    }
+  })();
 
 export const wait = (minTime: number = 1000, maxTime: number = 3000) => {
     const waitTime =
