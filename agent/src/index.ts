@@ -59,7 +59,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import yargs from "yargs";
 import calculatorPlugin from "@ai16z/plugin-calculator";
-import { loadProperties } from "./propertyLoader";
+//import { loadProperties } from "./propertyLoader";
 
 // Example property data
 const properties = [
@@ -80,7 +80,7 @@ const properties = [
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
 
-// Call the loadProperties function
+/* // Call the loadProperties function
 (async () => {
     try {
       console.log("Loading properties into the database...");
@@ -89,7 +89,7 @@ const __dirname = path.dirname(__filename); // get the name of the directory
     } catch (error) {
       console.error("Error loading properties:", error);
     }
-  })();
+  })(); */
 
 export const wait = (minTime: number = 1000, maxTime: number = 3000) => {
     const waitTime =
@@ -343,6 +343,16 @@ function initializeDatabase(dataDir: string) {
             connectionString: process.env.POSTGRES_URL,
             parseInputs: true,
         });
+
+        // Add query logging for debugging
+        const originalQuery = db.query.bind(db);
+        db.query = async function (...args: any[]) {
+            elizaLogger.log("Executing Query:", args[0]);
+            elizaLogger.log("With Values:", args[1]);
+            const result = await originalQuery(...args);
+            elizaLogger.log("Query Result:", result.rows);
+            return result;
+        };
 
         // Test the connection
         db.init()

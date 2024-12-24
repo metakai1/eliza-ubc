@@ -43,6 +43,7 @@ export class PostgresDatabaseAdapter
     private readonly connectionTimeout: number = 5000; // 5 seconds
 
     constructor(connectionConfig: any) {
+
         super({
             //circuitbreaker stuff
             failureThreshold: 5,
@@ -68,6 +69,15 @@ export class PostgresDatabaseAdapter
 
         this.setupPoolErrorHandling();
         this.testConnection();
+        (async () => {
+            try {
+                await this.query("SELECT NOW()");
+                elizaLogger.success("Startup Query Success!");
+            } catch (error) {
+                elizaLogger.error("Startup Query Error:", error);
+            }
+        })();
+
     }
 
     private setupPoolErrorHandling() {
@@ -177,9 +187,19 @@ export class PostgresDatabaseAdapter
         queryTextOrConfig: string | QueryConfig<I>,
         values?: QueryConfigValues<I>
     ): Promise<QueryResult<R>> {
-        return this.withDatabase(async () => {
-            return await this.pool.query(queryTextOrConfig, values);
+
+        //throw new Error("Query function called! debugging.... ");
+        elizaLogger.log("Executing Query:", queryTextOrConfig);
+        elizaLogger.log("With Values:", values);
+
+        const result = await this.withDatabase(async () => {
+            const res = await this.pool.query(queryTextOrConfig, values);
+            elizaLogger.log
+            ("Query Result:", res.rows);
+            return res;
         }, "query");
+
+        return result;
     }
 
     async init() {

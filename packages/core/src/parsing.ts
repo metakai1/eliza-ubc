@@ -68,6 +68,7 @@ export function parseJsonArrayFromText(text: string) {
         try {
             // Replace single quotes with double quotes before parsing
             const normalizedJson = jsonBlockMatch[1].replace(/'/g, '"');
+            console.error("Normalized JSON:", normalizedJson);
             jsonData = JSON.parse(normalizedJson);
         } catch (e) {
             console.error("Error parsing JSON:", e);
