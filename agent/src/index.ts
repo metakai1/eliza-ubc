@@ -7,6 +7,7 @@ import { LensAgentClient } from "@ai16z/client-lens";
 import { SlackClientInterface } from "@ai16z/client-slack";
 import { TelegramClientInterface } from "@ai16z/client-telegram";
 import { TwitterClientInterface } from "@ai16z/client-twitter";
+import { createDatabaseLoaderPlugin } from "@ai16z/plugin-load-database";
 import {
     AgentRuntime,
     CacheManager,
@@ -627,9 +628,7 @@ async function startAgent(
             fs.mkdirSync(dataDir, { recursive: true });
         }
 
-        db = initializeDatabase(dataDir) as IDatabaseAdapter &
-            IDatabaseCacheAdapter;
-
+        db = initializeDatabase(dataDir) as IDatabaseAdapter & IDatabaseCacheAdapter;
         await db.init();
 
         const cache = initializeDbCache(character, db);
@@ -651,6 +650,9 @@ async function startAgent(
 
         // report to console
         elizaLogger.debug(`Started ${character.name} as ${runtime.agentId}`);
+
+        // Add database loader plugin
+        runtime.plugins.push(createDatabaseLoaderPlugin());
 
         return runtime;
     } catch (error) {
