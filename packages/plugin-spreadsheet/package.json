@@ -4,12 +4,18 @@
   "description": "Spreadsheet data lookup and interpretation plugin for Eliza",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rimraf dist"
+  },
   "dependencies": {
     "@ai16z/eliza": "workspace:*",
     "csv-parse": "^5.5.3",
     "papaparse": "^5.4.1"
   },
   "devDependencies": {
-    "@types/papaparse": "^5.3.14"
+    "@types/papaparse": "^5.3.14",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.3"
   }
 }
