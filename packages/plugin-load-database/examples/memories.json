@@ -1,0 +1,19 @@
+{
+  "memories": [
+    {
+      "text": "The Celestium Codex is an ancient manuscript rumored to have been etched on sheets of crystallized starlight. Its pages shimmer with patterns that shift in response to moonlight.",
+      "category": "artifacts",
+      "tags": ["ancient", "mysterious", "celestial"]
+    },
+    {
+      "text": "Quantum Cows can teleport short distances using quantum entanglement, explaining their sudden appearances in fields surrounded by fences with no visible openings.",
+      "category": "creatures",
+      "tags": ["quantum", "teleportation", "animals"]
+    },
+    {
+      "text": "Mirror Cats possess reflective fur that bends light, allowing them to appear in two places at once—possibly solving the mystery of their sudden disappearances and reappearances.",
+      "category": "creatures",
+      "tags": ["optical", "feline", "mysterious"]
+    }
+  ]
+}
