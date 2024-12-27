@@ -42,6 +42,15 @@ async function get(
         }
     );
 
+    elizaLogger.debug("Found fragments:", fragments.length);
+    fragments.forEach((fragment) => {
+        elizaLogger.debug("Matching fragment:", {
+            text: fragment.content.text,
+            similarity: fragment.similarity,
+            source: fragment.content.source,
+        });
+    });
+
     const uniqueSources = [
         ...new Set(
             fragments.map((memory) => {

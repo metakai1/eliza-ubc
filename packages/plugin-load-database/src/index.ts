@@ -46,44 +46,25 @@ const saveMemoryAction: Action = {
         },
     ]],
     handler: async (runtime: AgentRuntime, message: any) => {
-        const { text } = message.content;
-        if (!text) {
-            throw new Error("No text content provided for memory storage");
-        }
-
-        elizaLogger.info("Executing save-memory action");
-        elizaLogger.debug("Message content:", message.content);
-        elizaLogger.debug("Room ID:", message.roomId);
-
         try {
-            // Clean the text by removing Discord mention tags
-            const cleanText = text.replace(/<@\d+>\s*/g, '').trim();
-            
-            // Create document memory
-            const documentId = stringToUuid(cleanText);
-            await runtime.documentsManager.createMemory({
+            const text = message.content.text;
+            elizaLogger.debug("Preprocessing text:", {
+                input: text,
+                length: text?.length,
+            });
+
+            // Create a knowledge item for the incoming text
+            const documentId = stringToUuid(text);
+            const knowledgeItem: KnowledgeItem = {
                 id: documentId,
-                userId: runtime.agentId,
-                agentId: runtime.agentId,
-                roomId: message.roomId,
                 content: {
-                    text: cleanText,
-                },
-            });
+                    text,
+                    source: "user-input"
+                }
+            };
 
-            // Create fragment memory
-            await runtime.knowledgeManager.createMemory({
-                id: stringToUuid(`${documentId}-fragment-0`),
-                userId: runtime.agentId,
-                agentId: runtime.agentId,
-                roomId: message.roomId,
-                content: {
-                    text: cleanText.toLowerCase(), // Normalize text case like in the working example
-                    source: documentId, // Use document ID as source instead of "save-memory-action"
-                },
-            });
-
-            elizaLogger.info("Document and fragment memories created successfully");
+            // Use the high-level knowledge.set function to create document and fragment memories
+            await knowledge.set(runtime, knowledgeItem);
 
             return [{
                 userId: runtime.agentId,
