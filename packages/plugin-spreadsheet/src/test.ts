@@ -1,17 +1,17 @@
 import { MemoryPropertyStorage } from './storage/memory-storage';
 import { PropertyStorageService } from './services';
-import { PropertyData } from './types';
+import { PropertyData, StorageError, StorageErrorCode } from './types';
 
 async function main() {
-    console.log('Starting sanity check test...');
-
-    // Create storage and service instances
+    console.log('Starting validation tests...');
+    
     const storage = new MemoryPropertyStorage();
     const service = new PropertyStorageService(storage);
 
-    // Add a sample property
-    const property1: PropertyData = {
-        id: '',  // This will be set by storage
+    // Test 1: Valid property
+    console.log('\nTest 1: Adding valid property');
+    const validProperty: PropertyData = {
+        id: '',
         name: 'Oceanfront Tower',
         neighborhood: 'Miami Beach',
         zoningType: 'Mixed-Use',
@@ -35,20 +35,70 @@ async function main() {
     };
 
     try {
-        // Test adding a property
-        console.log('Adding property...');
-        const propertyId = await service.addProperty(property1);
-        console.log('Successfully added property with ID:', propertyId);
-
-        // Test retrieving the property
-        console.log('Retrieving property...');
-        const retrievedProperty = await service.getProperty(propertyId);
-        console.log('Successfully retrieved property:', JSON.stringify(retrievedProperty, null, 2));
-
-        console.log('All tests passed! ');
+        const id = await service.addProperty(validProperty);
+        console.log('✅ Successfully added valid property with ID:', id);
     } catch (error) {
-        console.error('Test failed:', error);
+        console.error('❌ Failed to add valid property:', error);
     }
+
+    // Test 2: Invalid numeric values
+    console.log('\nTest 2: Testing invalid numeric values');
+    const invalidNumericProperty: PropertyData = {
+        ...validProperty,
+        maxFloors: 0  // Should fail as maxFloors must be >= 1
+    };
+
+    try {
+        await service.addProperty(invalidNumericProperty);
+        console.error('❌ Should have failed with invalid maxFloors');
+    } catch (error) {
+        if (error instanceof StorageError && error.code === StorageErrorCode.INVALID_NUMERIC_VALUE) {
+            console.log('✅ Correctly rejected invalid maxFloors');
+        } else {
+            console.error('❌ Unexpected error:', error);
+        }
+    }
+
+    // Test 3: Invalid min/max relationship
+    console.log('\nTest 3: Testing invalid min/max relationship');
+    const invalidMinMaxProperty: PropertyData = {
+        ...validProperty,
+        minFloors: 50,  // Higher than maxFloors (40)
+    };
+
+    try {
+        await service.addProperty(invalidMinMaxProperty);
+        console.error('❌ Should have failed with invalid min/max floors');
+    } catch (error) {
+        if (error instanceof StorageError && error.code === StorageErrorCode.INVALID_NUMERIC_VALUE) {
+            console.log('✅ Correctly rejected invalid min/max relationship');
+        } else {
+            console.error('❌ Unexpected error:', error);
+        }
+    }
+
+    // Test 4: Invalid market data
+    console.log('\nTest 4: Testing invalid market data');
+    const invalidMarketProperty: PropertyData = {
+        ...validProperty,
+        market: {
+            ...validProperty.market!,
+            currentPrice: -1000  // Invalid negative price
+        }
+    };
+
+    try {
+        await service.addProperty(invalidMarketProperty);
+        console.error('❌ Should have failed with invalid market price');
+    } catch (error) {
+        if (error instanceof StorageError && error.code === StorageErrorCode.INVALID_MARKET_DATA) {
+            console.log('✅ Correctly rejected invalid market data');
+        } else {
+            console.error('❌ Unexpected error:', error);
+        }
+    }
+
+    console.log('\nValidation tests completed!');
 }
 
 main().catch(console.error);
