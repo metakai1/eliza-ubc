@@ -88,3 +88,5 @@ export const databaseLoaderPlugin: Plugin = {
     description: "Plugin for loading and saving data to the database",
     actions: [saveMemoryAction]
 };
+
+export { loadMemoriesFromFile } from './load-memories';

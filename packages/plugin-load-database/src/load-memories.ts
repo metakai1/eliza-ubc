@@ -31,8 +31,17 @@ export async function loadMemoriesFromFile(runtime: AgentRuntime, filePath: stri
 
         // Process each memory entry
         for (const memory of memories) {
-            // Create a knowledge item for the incoming text - using same code as index.ts
+            // Create a document ID for deduplication
             const documentId = stringToUuid(memory.text);
+
+            // Check if document already exists
+            const existingDocument = await runtime.documentsManager.getMemoryById(documentId);
+            if (existingDocument) {
+                elizaLogger.info(`Skipping duplicate memory: ${memory.text.slice(0, 100)}...`);
+                continue;
+            }
+
+            // Create a knowledge item for the incoming text
             const knowledgeItem: KnowledgeItem = {
                 id: documentId,
                 content: {

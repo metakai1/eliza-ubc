@@ -1,19 +1,30 @@
 {
-  "memories": [
-    {
-      "text": "The Celestium Codex is an ancient manuscript rumored to have been etched on sheets of crystallized starlight. Its pages shimmer with patterns that shift in response to moonlight.",
-      "category": "artifacts",
-      "tags": ["ancient", "mysterious", "celestial"]
-    },
-    {
-      "text": "Quantum Cows can teleport short distances using quantum entanglement, explaining their sudden appearances in fields surrounded by fences with no visible openings.",
-      "category": "creatures",
-      "tags": ["quantum", "teleportation", "animals"]
-    },
-    {
-      "text": "Mirror Cats possess reflective fur that bends light, allowing them to appear in two places at once—possibly solving the mystery of their sudden disappearances and reappearances.",
-      "category": "creatures",
-      "tags": ["optical", "feline", "mysterious"]
-    }
-  ]
-}
+    "memories": [
+      {
+        "text": "The Chrono Coral Reef is believed to be a natural clockwork ecosystem that tracks time by the movement of bioluminescent algae. Divers have reported seeing patterns resembling ancient star charts glowing across the reef at midnight.",
+        "category": "locations",
+        "tags": ["ocean", "mystical", "timekeeping"]
+      },
+      {
+        "text": "Nebula Owls are rumored to nest inside pockets of dark matter, becoming temporarily invisible when startled. Their feathers emit faint radio signals that scientists speculate could be alien distress calls.",
+        "category": "creatures",
+        "tags": ["space", "birds", "mysterious"]
+      },
+      {
+        "text": "The Gravity Loom is a device said to weave fabrics using threads made of compressed stardust. Its patterns reportedly shift based on the phases of the moon, hinting at its cosmic origins.",
+        "category": "artifacts",
+        "tags": ["mystical", "cosmic", "fabric"]
+      },
+      {
+        "text": "Echo Frogs are amphibians that can mimic human voices with eerie precision. Researchers believe they evolved this ability to confuse predators, but locals insist they use it to eavesdrop on conversations.",
+        "category": "creatures",
+        "tags": ["amphibians", "mimicry", "mysterious"]
+      },
+      {
+        "text": "The Sky Harp is an enormous structure suspended in Earth's upper atmosphere, emitting melodies when struck by lightning. Scientists speculate it was designed by an ancient race to communicate with distant planets.",
+        "category": "artifacts",
+        "tags": ["sound", "sky", "mystical"]
+      }
+    ]
+  }
+
