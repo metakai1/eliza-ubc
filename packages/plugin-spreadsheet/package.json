@@ -1,0 +1,15 @@
+{
+  "name": "@ai16z/plugin-spreadsheet",
+  "version": "0.0.1",
+  "description": "Spreadsheet data lookup and interpretation plugin for Eliza",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "dependencies": {
+    "@ai16z/eliza": "workspace:*",
+    "csv-parse": "^5.5.3",
+    "papaparse": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/papaparse": "^5.3.14"
+  }
+}

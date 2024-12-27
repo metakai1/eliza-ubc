@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>whitepaper.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="nft-real-estate-semantic-search-a-multi-phase-query-system">NFT Real Estate Semantic Search: A Multi-Phase Query System</h1>
+<h2 id="abstract">Abstract</h2>
+<p>We present a novel approach to NFT real estate search that combines semantic understanding, vector similarity, and real-time market data. Our system integrates natural language processing with blockchain market data to provide an intuitive yet powerful property search experience. The architecture supports both local and cloud-based deployments, enabling scalability while maintaining development flexibility.</p>
+<h2 id="1-introduction">1. Introduction</h2>
+<p>The intersection of real estate and blockchain technology has created new opportunities and challenges in property search and valuation. Traditional search methods often fail to capture the nuanced requirements of users or incorporate real-time market dynamics. Our system addresses these limitations through a multi-phase query approach that combines semantic understanding with market intelligence.</p>
+<h3 id="11-key-innovations">1.1 Key Innovations</h3>
+<ul>
+<li>Multi-phase query processing</li>
+<li>Real-time NFT market integration</li>
+<li>Flexible storage architecture</li>
+<li>Natural language understanding</li>
+<li>Hybrid search capabilities</li>
+</ul>
+<h2 id="2-implementation-strategy">2. Implementation Strategy</h2>
+<p>Our development approach emphasizes iterative progress and continuous validation:</p>
+<h3 id="21-phase-1-core-search-infrastructure-weeks-1-4">2.1 Phase 1: Core Search Infrastructure (Weeks 1-4)</h3>
+<pre><code class="language-mermaid"><div class="mermaid">gantt
+    title Phase 1: Core Infrastructure
+    dateFormat  YYYY-MM-DD
+    section Storage
+    Interface Design       :a1, 2024-01-01, 1w
+    Local Implementation   :a2, after a1, 1w
+    section Search
+    Basic Vector Search    :a3, after a2, 1w
+    Filter Implementation  :a4, after a3, 1w
+</div></code></pre>
+<ol>
+<li>
+<p><strong>Week 1: Storage Interface</strong></p>
+<pre class="hljs"><code><div><span class="hljs-keyword">interface</span> PropertyStorage {
+    addProperty(property: PropertyData): <span class="hljs-built_in">Promise</span>&lt;<span class="hljs-built_in">string</span>&gt;;
+    searchByVector(vector: <span class="hljs-built_in">number</span>[], options: SearchOptions): <span class="hljs-built_in">Promise</span>&lt;SearchResult[]&gt;;
+    searchByFilters(filters: FilterGroup): <span class="hljs-built_in">Promise</span>&lt;SearchResult[]&gt;;
+}
+</div></code></pre>
+</li>
+<li>
+<p><strong>Week 2: Local Storage</strong></p>
+<ul>
+<li>In-memory implementation</li>
+<li>Basic vector operations</li>
+<li>Simple filtering</li>
+</ul>
+</li>
+<li>
+<p><strong>Week 3: Vector Search</strong></p>
+<ul>
+<li>Embedding generation</li>
+<li>Similarity calculations</li>
+<li>Result ranking</li>
+</ul>
+</li>
+<li>
+<p><strong>Week 4: Filtering</strong></p>
+<ul>
+<li>Metadata filters</li>
+<li>Combined search</li>
+<li>Result pagination</li>
+</ul>
+</li>
+</ol>
+<h3 id="22-phase-2-natural-language-processing-weeks-5-8">2.2 Phase 2: Natural Language Processing (Weeks 5-8)</h3>
+<pre><code class="language-mermaid"><div class="mermaid">gantt
+    title Phase 2: NLP Integration
+    dateFormat  YYYY-MM-DD
+    section Query
+    Intent Parsing        :b1, 2024-02-01, 1w
+    Filter Generation     :b2, after b1, 1w
+    section Integration
+    Multi-phase Query     :b3, after b2, 1w
+    Result Ranking        :b4, after b3, 1w
+</div></code></pre>
+<ol>
+<li>
+<p><strong>Week 5: Query Understanding</strong></p>
+<pre class="hljs"><code><div><span class="hljs-keyword">interface</span> QueryIntent {
+    propertyFeatures: {
+        location?: <span class="hljs-built_in">string</span>[];
+        amenities?: <span class="hljs-built_in">string</span>[];
+        proximity?: <span class="hljs-built_in">Array</span>&lt;{to: <span class="hljs-built_in">string</span>; distance: <span class="hljs-built_in">number</span>}&gt;;
+    };
+    marketConstraints?: {
+        maxPrice?: <span class="hljs-built_in">number</span>;
+        mustBeListed?: <span class="hljs-built_in">boolean</span>;
+    };
+}
+</div></code></pre>
+</li>
+<li>
+<p><strong>Week 6: Filter Generation</strong></p>
+<ul>
+<li>Convert intents to filters</li>
+<li>Handle complex queries</li>
+<li>Validation rules</li>
+</ul>
+</li>
+<li>
+<p><strong>Week 7: Multi-phase Integration</strong></p>
+<ul>
+<li>Query pipeline</li>
+<li>Result merging</li>
+<li>Performance optimization</li>
+</ul>
+</li>
+<li>
+<p><strong>Week 8: Result Ranking</strong></p>
+<ul>
+<li>Scoring algorithms</li>
+<li>Relevance tuning</li>
+<li>User feedback integration</li>
+</ul>
+</li>
+</ol>
+<h3 id="23-phase-3-market-integration-weeks-9-12">2.3 Phase 3: Market Integration (Weeks 9-12)</h3>
+<pre><code class="language-mermaid"><div class="mermaid">gantt
+    title Phase 3: NFT Integration
+    dateFormat  YYYY-MM-DD
+    section Market
+    OpenSea Integration   :c1, 2024-03-01, 1w
+    Price Analysis        :c2, after c1, 1w
+    section Enhancement
+    Market Intelligence   :c3, after c2, 1w
+    Performance Tuning    :c4, after c3, 1w
+</div></code></pre>
+<h2 id="3-system-architecture">3. System Architecture</h2>
+<h3 id="31-core-components">3.1 Core Components</h3>
+<pre><code class="language-mermaid"><div class="mermaid">graph TD
+    A[Eliza Plugin] --> B[Query Processor]
+    B --> C[Storage Interface]
+    C --> D[Local Storage]
+    C --> E[Cloud Storage]
+    B --> F[Market Service]
+    F --> G[OpenSea API]
+</div></code></pre>
+<h3 id="32-query-flow">3.2 Query Flow</h3>
+<pre><code class="language-mermaid"><div class="mermaid">sequenceDiagram
+    participant U as User
+    participant E as Eliza
+    participant S as Storage
+    participant M as Market
+
+    U->>E: Natural query
+    E->>E: Parse intent
+    E->>S: Property search
+    E->>M: Market check
+    E->>E: Rank results
+    E-->>U: Final results
+</div></code></pre>
+<h2 id="4-technical-implementation">4. Technical Implementation</h2>
+<h3 id="41-storage-layer">4.1 Storage Layer</h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">class</span> CloudPropertyStorage <span class="hljs-keyword">implements</span> PropertyStorage {
+    <span class="hljs-keyword">async</span> searchByVector(vector: <span class="hljs-built_in">number</span>[], options: SearchOptions) {
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.db.query(<span class="hljs-string">`
+            WITH vector_matches AS (
+                SELECT id, 1 - (embedding &lt;=&gt; $1) as similarity
+                FROM properties
+                WHERE 1 - (embedding &lt;=&gt; $1) &gt; $2
+                ORDER BY similarity DESC
+                LIMIT $3
+            )
+            SELECT p.*, vm.similarity
+            FROM properties p
+            JOIN vector_matches vm ON p.id = vm.id
+            WHERE <span class="hljs-subst">${<span class="hljs-keyword">this</span>.buildFilterSQL(options.filters)}</span>
+            ORDER BY vm.similarity DESC
+        `</span>, [vector, options.threshold, options.limit]);
+    }
+}
+</div></code></pre>
+<h3 id="42-query-processing">4.2 Query Processing</h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">class</span> QueryProcessor {
+    <span class="hljs-keyword">async</span> process(query: <span class="hljs-built_in">string</span>): <span class="hljs-built_in">Promise</span>&lt;SearchResult[]&gt; {
+        <span class="hljs-comment">// Phase 1: Understanding</span>
+        <span class="hljs-keyword">const</span> intent = <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>.parseIntent(query);
+        
+        <span class="hljs-comment">// Phase 2: Property Search</span>
+        <span class="hljs-keyword">const</span> properties = <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>.storage.searchProperties({
+            vector: <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>.getEmbedding(query),
+            filters: <span class="hljs-keyword">this</span>.intentToFilters(intent)
+        });
+        
+        <span class="hljs-comment">// Phase 3: Market Enrichment</span>
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.enrichWithMarketData(properties);
+    }
+}
+</div></code></pre>
+<h3 id="43-market-integration">4.3 Market Integration</h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">class</span> MarketService {
+    <span class="hljs-keyword">async</span> enrichWithMarketData(
+        properties: PropertyData[]
+    ): <span class="hljs-built_in">Promise</span>&lt;EnrichedProperty[]&gt; {
+        <span class="hljs-keyword">const</span> marketData = <span class="hljs-keyword">await</span> <span class="hljs-built_in">Promise</span>.all(
+            properties.map(<span class="hljs-function"><span class="hljs-params">p</span> =&gt;</span> <span class="hljs-keyword">this</span>.getMarketStatus(p.nft))
+        );
+        
+        <span class="hljs-keyword">return</span> properties.map(<span class="hljs-function">(<span class="hljs-params">prop, i</span>) =&gt;</span> ({
+            ...prop,
+            market: marketData[i],
+            analysis: <span class="hljs-keyword">this</span>.analyzeMarketData(marketData[i])
+        }));
+    }
+}
+</div></code></pre>
+<h2 id="5-performance-optimizations">5. Performance Optimizations</h2>
+<h3 id="51-caching-strategy">5.1 Caching Strategy</h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">class</span> QueryCache {
+    <span class="hljs-comment">// Short TTL for market data</span>
+    <span class="hljs-keyword">private</span> marketCache = <span class="hljs-keyword">new</span> TTLCache&lt;<span class="hljs-built_in">string</span>, MarketStatus&gt;(<span class="hljs-number">5</span> * <span class="hljs-number">60</span>);
+    
+    <span class="hljs-comment">// Longer TTL for property data</span>
+    <span class="hljs-keyword">private</span> propertyCache = <span class="hljs-keyword">new</span> TTLCache&lt;<span class="hljs-built_in">string</span>, PropertyData&gt;(<span class="hljs-number">60</span> * <span class="hljs-number">60</span>);
+    
+    <span class="hljs-comment">// Very short TTL for search results</span>
+    <span class="hljs-keyword">private</span> searchCache = <span class="hljs-keyword">new</span> TTLCache&lt;<span class="hljs-built_in">string</span>, SearchResult[]&gt;(<span class="hljs-number">60</span>);
+}
+</div></code></pre>
+<h3 id="52-batch-processing">5.2 Batch Processing</h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">class</span> BatchProcessor {
+    <span class="hljs-keyword">private</span> queue: <span class="hljs-built_in">Array</span>&lt;{
+        property: PropertyData;
+        resolve: <span class="hljs-function">(<span class="hljs-params">data: MarketStatus</span>) =&gt;</span> <span class="hljs-built_in">void</span>;
+    }&gt; = [];
+
+    <span class="hljs-keyword">async</span> add(property: PropertyData): <span class="hljs-built_in">Promise</span>&lt;MarketStatus&gt; {
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span>(<span class="hljs-function"><span class="hljs-params">resolve</span> =&gt;</span> {
+            <span class="hljs-keyword">this</span>.queue.push({ property, resolve });
+            <span class="hljs-keyword">this</span>.processBatchIfReady();
+        });
+    }
+}
+</div></code></pre>
+<h2 id="6-future-enhancements">6. Future Enhancements</h2>
+<h3 id="61-advanced-features">6.1 Advanced Features</h3>
+<ol>
+<li>Price prediction</li>
+<li>Investment recommendations</li>
+<li>Market trend analysis</li>
+<li>Automated alerts</li>
+</ol>
+<h3 id="62-technical-improvements">6.2 Technical Improvements</h3>
+<ol>
+<li>GraphQL API</li>
+<li>Real-time updates</li>
+<li>Machine learning integration</li>
+<li>Advanced caching</li>
+</ol>
+<h2 id="7-conclusion">7. Conclusion</h2>
+<p>Our system demonstrates how combining semantic search, blockchain data, and natural language processing can create a powerful property search experience. The multi-phase approach provides flexibility and extensibility while maintaining high performance.</p>
+<h2 id="8-references">8. References</h2>
+<ol>
+<li>
+<p>Vector Similarity Search</p>
+<ul>
+<li>&quot;Efficient Vector Similarity Search in PostgreSQL&quot;</li>
+<li>&quot;Approximate Nearest Neighbor Search in High Dimensions&quot;</li>
+</ul>
+</li>
+<li>
+<p>NFT Market Analysis</p>
+<ul>
+<li>&quot;Real-time NFT Market Analysis&quot;</li>
+<li>&quot;Blockchain Data Indexing Strategies&quot;</li>
+</ul>
+</li>
+<li>
+<p>Natural Language Processing</p>
+<ul>
+<li>&quot;LLM-based Query Understanding&quot;</li>
+<li>&quot;Semantic Search in Practice&quot;</li>
+</ul>
+</li>
+</ol>
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+Rank,Name,Neighborhood,Zoning Type,Plot Size,Building Size,Distance to Ocean,Distance to Bay,Max # of Floors,Min # of Floors,Plot Area (m²),Min Building Height (m),Max Building Height (m),Distance to Ocean (m),Distance to Bay (m)
+1,NX-1,Nexus,Residential,Giga,Megatall,Very Close,Far,113,95,12500,380,455,294,850
+2,FL-163,Flashing Lights,Mixed Use,Mega,Megatall,Close,Medium,105,88,8900,350,421,462,623
+3,FL-192,Flashing Lights,Commercial,Mega,Megatall,Very Close,Far,116,98,9200,385,464,317,912
+4,NX-7,Nexus,Residential,Mega,Supertall,Far,Close,105,90,7800,320,380,712,382
+5,FL-141,Flashing Lights,Mixed Use,Ultra,Megatall,Far,Very Close,105,87,15000,345,418,823,284
+6,NX-12,Nexus,Commercial,Mega,Supertall,Medium,Medium,98,82,8100,310,365,545,578
+7,FL-227,Flashing Lights,Residential,Giga,Megatall,Close,Far,108,91,11800,360,432,488,867
+8,NX-3,Nexus,Mixed Use,Ultra,Megatall,Very Close,Medium,110,93,14200,370,445,276,634
+9,FL-156,Flashing Lights,Commercial,Mega,Supertall,Medium,Close,95,80,8500,300,358,567,412
+10,NX-9,Nexus,Residential,Mega,Supertall,Far,Very Close,102,85,7900,315,375,789,298
