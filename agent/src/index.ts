@@ -7,7 +7,7 @@ import { LensAgentClient } from "@ai16z/client-lens";
 import { SlackClientInterface } from "@ai16z/client-slack";
 import { TelegramClientInterface } from "@ai16z/client-telegram";
 import { TwitterClientInterface } from "@ai16z/client-twitter";
-import { createDatabaseLoaderPlugin } from "@ai16z/plugin-load-database";
+import { databaseLoaderPlugin } from "@ai16z/plugin-load-database";
 import {
     AgentRuntime,
     CacheManager,
@@ -62,7 +62,7 @@ import yargs from "yargs";
 import calculatorPlugin from "@ai16z/plugin-calculator";
 //import { loadProperties } from "./propertyLoader";
 
-// Example property data
+/* // Example property data
 const properties = [
     {
       address: "123 Main St",
@@ -76,7 +76,8 @@ const properties = [
       bedrooms: 4,
       description: "A luxurious 4-bedroom home with a modern design.",
     },
-  ];
+  ]; */
+
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
@@ -91,6 +92,16 @@ const __dirname = path.dirname(__filename); // get the name of the directory
       console.error("Error loading properties:", error);
     }
   })(); */
+async function listAvailablePlugins(runtime: AgentRuntime): Promise<void> {
+    if (runtime.plugins && runtime.plugins.length > 0) {
+        console.log("Available Plugins:");
+        runtime.plugins.forEach((plugin, index) => {
+            console.log(`${index + 1}. ${plugin.name || "Unnamed Plugin"}`);
+        });
+    } else {
+        console.log("No plugins are currently registered.");
+    }
+}
 
 export const wait = (minTime: number = 1000, maxTime: number = 3000) => {
     const waitTime =
@@ -522,7 +533,7 @@ export async function createAgent(
         // character.plugins are handled when clients are added
         plugins: [
             bootstrapPlugin,
-            calculatorPlugin,
+            databaseLoaderPlugin,
             getSecret(character, "CONFLUX_CORE_PRIVATE_KEY")
                 ? confluxPlugin
                 : null,
@@ -631,6 +642,8 @@ async function startAgent(
         db = initializeDatabase(dataDir) as IDatabaseAdapter & IDatabaseCacheAdapter;
         await db.init();
 
+        //const databaseLoaderPlugin = createDatabaseLoaderPlugin();
+
         const cache = initializeDbCache(character, db);
         const runtime: AgentRuntime = await createAgent(
             character,
@@ -639,8 +652,15 @@ async function startAgent(
             token
         );
 
+        // Add database loader plugin
+        //runtime.plugins.push(databaseLoaderPlugin);
+
+
         // start services/plugins/process knowledge
         await runtime.initialize();
+
+        // List all available plugins
+        await listAvailablePlugins(runtime);
 
         // start assigned clients
         runtime.clients = await initializeClients(character, runtime);
@@ -651,8 +671,6 @@ async function startAgent(
         // report to console
         elizaLogger.debug(`Started ${character.name} as ${runtime.agentId}`);
 
-        // Add database loader plugin
-        runtime.plugins.push(createDatabaseLoaderPlugin());
 
         return runtime;
     } catch (error) {
