@@ -11,7 +11,9 @@ export class PropertyStorageService extends Service implements PropertyStorage {
         this.storage = storage;
     }
 
-    //static override serviceType: ServiceType = ServiceType.PROPERTY_STORAGE;
+    static override get serviceType(): ServiceType {
+        return ServiceType.PROPERTY_STORAGE;
+    }
 
     async initialize(runtime: IAgentRuntime): Promise<void> {
         // Initialize any runtime-dependent properties here if needed

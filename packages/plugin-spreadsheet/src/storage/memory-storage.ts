@@ -1,5 +1,6 @@
-import { PropertyData, SearchOptions, SearchResult, FilterGroup, StorageError, StorageErrorCode } from '../types';
+import { PropertyData, SearchOptions, SearchResult, FilterGroup, StorageError, StorageErrorCode, MetadataFilter } from '../types';
 import { BasePropertyStorage } from '../storage';
+import { knowledge, elizaLogger, IAgentRuntime, Memory } from '@ai16z/eliza';
 
 /**
  * In-memory implementation of PropertyStorage
@@ -7,6 +8,12 @@ import { BasePropertyStorage } from '../storage';
 export class MemoryPropertyStorage extends BasePropertyStorage {
     private properties: Map<string, PropertyData> = new Map();
     private nextId: number = 1;
+    private runtime: IAgentRuntime;
+
+    constructor(runtime: IAgentRuntime) {
+        super();
+        this.runtime = runtime;
+    }
 
     async addProperty(property: PropertyData): Promise<string> {
         this.validateProperty(property);
@@ -47,13 +54,91 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
     }
 
     async searchByFilters(filters: FilterGroup): Promise<SearchResult[]> {
-        // Basic implementation - return all properties with a default score
-        return Array.from(this.properties.entries()).map(([id, property]) => ({
-            id,
-            property,
+        elizaLogger.info('Searching properties with filters:', filters);
+        
+        // Create a memory object for knowledge search
+        const memory: Memory = {
+            agentId: this.runtime.agentId,
+            userId: this.runtime.agentId,
+            roomId: this.runtime.agentId,
+            content: {
+                text: this.filtersToQuery(filters)
+            }
+        };
+
+        // Get results from knowledge system
+        const knowledgeItems = await knowledge.get(this.runtime, memory);
+        elizaLogger.info('Retrieved knowledge items:', knowledgeItems);
+
+        // Convert knowledge items to property results
+        const knowledgeResults = knowledgeItems.map(item => ({
+            id: item.id,
+            property: item.content.metadata as PropertyData,
             similarity: 1.0,
             matchedFilters: []
         }));
+
+        // Apply existing filter logic
+        const applyFilter = (property: PropertyData, filter: MetadataFilter): boolean => {
+            const value = property[filter.field as keyof PropertyData];
+            const searchValue = filter.value;
+
+            switch (filter.operator) {
+                case '$eq':
+                    return value === searchValue;
+                case '$in':
+                    if (typeof value === 'string' && typeof searchValue === 'string') {
+                        return value.toLowerCase().includes(searchValue.toLowerCase());
+                    }
+                    return false;
+                // Add more operators as needed
+                default:
+                    return false;
+            }
+        };
+
+        const applyFilterGroup = (property: PropertyData, group: FilterGroup): boolean => {
+            const results = group.filters.map(filter => {
+                if ('operator' in filter && ('filters' in filter)) {
+                    // Nested filter group
+                    return applyFilterGroup(property, filter as FilterGroup);
+                } else {
+                    // Single filter
+                    return applyFilter(property, filter as MetadataFilter);
+                }
+            });
+
+            return group.operator === 'AND' 
+                ? results.every(r => r)
+                : results.some(r => r);
+        };
+
+        const matchedProperties = Array.from(this.properties.values())
+            .filter(property => applyFilterGroup(property, filters))
+            .map(property => ({
+                id: property.id,
+                property,
+                similarity: 1.0,
+                matchedFilters: []
+            }));
+
+        console.log('Matched properties:', matchedProperties);
+        return [...knowledgeResults, ...matchedProperties];
+    }
+
+    private filtersToQuery(filters: FilterGroup): string {
+        const filterToText = (filter: MetadataFilter): string => {
+            return `${filter.field}:${filter.value}`;
+        };
+
+        const groupToText = (group: FilterGroup): string => {
+            const filterTexts = group.filters.map(f => 
+                'operator' in f ? groupToText(f as FilterGroup) : filterToText(f as MetadataFilter)
+            );
+            return filterTexts.join(group.operator === 'AND' ? ' AND ' : ' OR ');
+        };
+
+        return groupToText(filters);
     }
 
     async getCount(): Promise<number> {

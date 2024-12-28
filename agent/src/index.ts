@@ -60,6 +60,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import yargs from "yargs";
 import calculatorPlugin from "@ai16z/plugin-calculator";
+import spreadsheetPlugin from "@ai16z/plugin-spreadsheet";
 //import { loadProperties } from "./propertyLoader";
 
 /* // Example property data
@@ -601,6 +602,7 @@ export async function createAgent(
             getSecret(character, "TON_PRIVATE_KEY") ? tonPlugin : null,
             getSecret(character, "SUI_PRIVATE_KEY") ? suiPlugin : null,
             getSecret(character, "STORY_PRIVATE_KEY") ? storyPlugin : null,
+            spreadsheetPlugin // Add our spreadsheet plugin
         ].filter(Boolean),
         providers: [],
         actions: [],
