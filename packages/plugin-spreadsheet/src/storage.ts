@@ -1,5 +1,6 @@
 import { IAgentRuntime } from '@ai16z/eliza';
-import { PropertyData, SearchOptions, SearchResult, FilterGroup, StorageError, StorageErrorCode } from './types';
+import { PropertyData, SearchOptions, SearchResult, FilterGroup } from './types';
+import { StorageError, StorageErrorCode } from './errors';
 
 /**
  * Core interface for property storage operations
@@ -83,9 +84,8 @@ export abstract class BasePropertyStorage implements PropertyStorage {
             await Promise.all(properties.map(p => this.addProperty(p)));
         } catch (error) {
             throw new StorageError(
-                'Bulk load failed',
-                StorageErrorCode.OPERATION_FAILED,
-                error
+                StorageErrorCode.INTERNAL_ERROR,
+                `Bulk load failed: ${error}`
             );
         }
     }
@@ -97,8 +97,8 @@ export abstract class BasePropertyStorage implements PropertyStorage {
     protected validateProperty(property: PropertyData): void {
         if (!property.id || !property.name) {
             throw new StorageError(
-                'Property must have id and name',
-                StorageErrorCode.INVALID_DATA
+                StorageErrorCode.INVALID_INPUT,
+                'Property must have id and name'
             );
         }
     }
@@ -110,8 +110,8 @@ export abstract class BasePropertyStorage implements PropertyStorage {
     protected validateVector(vector: number[]): void {
         if (!Array.isArray(vector) || vector.length === 0) {
             throw new StorageError(
-                'Invalid vector',
-                StorageErrorCode.VECTOR_MISMATCH
+                StorageErrorCode.INVALID_INPUT,    // KAI wilder got rid of a stupid enum here
+                'Invalid vector'
             );
         }
     }

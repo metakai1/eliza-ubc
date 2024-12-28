@@ -1,4 +1,5 @@
-import { PropertyData, SearchOptions, SearchResult, FilterGroup, StorageError, StorageErrorCode, MetadataFilter } from '../types';
+import { PropertyData, SearchOptions, SearchResult, FilterGroup, MetadataFilter } from '../types';
+import { StorageError, StorageErrorCode } from '../errors';
 import { BasePropertyStorage } from '../storage';
 import { knowledge, elizaLogger, AgentRuntime, Memory } from '@ai16z/eliza';
 
@@ -12,11 +13,11 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
 
     constructor() {
         super();
-        elizaLogger.debug('MemoryPropertyStorage: Constructor called');
+        elizaLogger.info('MemoryPropertyStorage: Constructor called');
     }
 
     initialize(runtime: AgentRuntime) {
-        elizaLogger.debug('MemoryPropertyStorage: Initializing with runtime', {
+        elizaLogger.info('MemoryPropertyStorage: Initializing with runtime', {
             hasRuntime: !!runtime,
             runtimeType: runtime?.constructor?.name,
             agentId: runtime?.agentId
@@ -34,14 +35,14 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
     async getProperty(id: string): Promise<PropertyData> {
         const property = this.properties.get(id);
         if (!property) {
-            throw new StorageError(`Property with ID ${id} not found`, StorageErrorCode.NOT_FOUND);
+            throw new StorageError(StorageErrorCode.NOT_FOUND, `Property with ID ${id} not found`);
         }
         return { ...property };
     }
 
     async updateProperty(id: string, property: PropertyData): Promise<void> {
         if (!this.properties.has(id)) {
-            throw new StorageError(`Property with ID ${id} not found`, StorageErrorCode.NOT_FOUND);
+            throw new StorageError(StorageErrorCode.NOT_FOUND, `Property with ID ${id} not found`);
         }
         this.validateProperty(property);
         this.properties.set(id, { ...property, id });
@@ -49,7 +50,7 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
 
     async deleteProperty(id: string): Promise<void> {
         if (!this.properties.delete(id)) {
-            throw new StorageError(`Property with ID ${id} not found`, StorageErrorCode.NOT_FOUND);
+            throw new StorageError(StorageErrorCode.NOT_FOUND,`Property with ID ${id} not found` );
         }
     }
 
@@ -67,10 +68,10 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
             hasRuntime: !!this.runtime,
             filtersLength: filters?.filters?.length || 0
         });
-        
+
         if (!this.runtime) {
             elizaLogger.error('MemoryPropertyStorage: Runtime not initialized for searchByFilters');
-            throw new StorageError('Runtime not initialized', StorageErrorCode.OPERATION_FAILED);
+            throw new StorageError(StorageErrorCode.INTERNAL_ERROR, 'Runtime not initialized');
         }
 
         elizaLogger.info('Searching properties with filters:', filters);

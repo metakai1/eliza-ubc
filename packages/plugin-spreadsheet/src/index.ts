@@ -41,16 +41,13 @@ const searchPropertiesAction: Action = {
             throw new Error('Runtime not initialized');
         }
 
-
-/*         const service = runtime.getService<PropertyStorageService>(ServiceType.PROPERTY_STORAGE);
-        if (!service) {
-            elizaLogger.error('Property storage service not available');
-            throw new Error('Property storage service not available');
+        // Initialize the service with runtime
+        try {
+            await service.initialize(runtime);
+        } catch (error) {
+            elizaLogger.error('Failed to initialize service:', error);
+            throw error;
         }
- */
-        // Use the plugin's service instance directly
-        await service.initialize(runtime);
-
 
         // Extract the search query from the message text
         const text = message.content?.text || '';

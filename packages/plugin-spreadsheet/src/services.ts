@@ -16,8 +16,7 @@ export class PropertyStorageService extends Service implements PropertyStorage {
     }
 
     async initialize(runtime: IAgentRuntime): Promise<void> {
-        // Initialize any runtime-dependent properties here if needed
-        return Promise.resolve();
+        await this.storage.initialize(runtime);
     }
 
     async addProperty(property: any) {

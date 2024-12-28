@@ -2,6 +2,7 @@ import { Service, ServiceType, AgentRuntime, elizaLogger } from '@ai16z/eliza';
 import { PropertyStorage } from '../storage';
 import { MemoryPropertyStorage } from '../storage/memory-storage';
 import { FilterGroup, SearchOptions, SearchResult } from '../types';
+import { StorageError, StorageErrorCode } from '../errors';
 
 export class PropertyStorageService implements Service {
     readonly type = ServiceType.PROPERTY_STORAGE;
@@ -36,14 +37,22 @@ export class PropertyStorageService implements Service {
             filterCount: filters.filters?.length,
             filterFields: filters.filters?.map(f => typeof f === 'object' && 'field' in f ? f.field : 'group')
         });
+
+        if (!this.runtime) {
+            elizaLogger.error('PropertyStorageService: Runtime not initialized');
+            throw new StorageError(StorageErrorCode.INTERNAL_ERROR, 'Runtime not initialized');
+        }
+
         elizaLogger.info('PropertyStorageService.searchByFilters called with:', {
             operator: filters.operator,
             filterCount: filters.filters?.length,
             filterFields: filters.filters?.map(f => typeof f === 'object' && 'field' in f ? f.field : 'group')
         });
+
         if (!this.storage) {
-            throw new Error('PropertyStorageService not initialized');
+            throw new StorageError(StorageErrorCode.INTERNAL_ERROR, 'Storage not initialized');
         }
+
         try {
             const results = await this.storage.searchByFilters(filters);
             elizaLogger.info('PropertyStorageService search results:', {

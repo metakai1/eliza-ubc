@@ -89,31 +89,3 @@ export interface FilterGroup {
     operator: 'AND' | 'OR';
     filters: (MetadataFilter | FilterGroup)[];
 }
-
-/**
- * Error types for storage operations
- */
-export enum StorageErrorCode {
-    NOT_FOUND = 'NOT_FOUND',
-    INVALID_DATA = 'INVALID_DATA',
-    OPERATION_FAILED = 'OPERATION_FAILED',
-    VECTOR_MISMATCH = 'VECTOR_MISMATCH',
-    MISSING_REQUIRED_FIELD = 'MISSING_REQUIRED_FIELD',
-    INVALID_NUMERIC_VALUE = 'INVALID_NUMERIC_VALUE',
-    INVALID_MARKET_DATA = 'INVALID_MARKET_DATA',
-    INVALID_NFT_DATA = 'INVALID_NFT_DATA'
-}
-
-/**
- * Custom error class for storage operations
- */
-export class StorageError extends Error {
-    constructor(
-        message: string,
-        public code: StorageErrorCode,
-        public details?: any
-    ) {
-        super(message);
-        this.name = 'StorageError';
-    }
-}
