@@ -1,6 +1,6 @@
 import { PropertyData, SearchOptions, SearchResult, FilterGroup, StorageError, StorageErrorCode, MetadataFilter } from '../types';
 import { BasePropertyStorage } from '../storage';
-import { knowledge, elizaLogger, IAgentRuntime, Memory, AgentRuntime } from '@ai16z/eliza';
+import { knowledge, elizaLogger, AgentRuntime, Memory } from '@ai16z/eliza';
 
 /**
  * In-memory implementation of PropertyStorage
@@ -8,9 +8,14 @@ import { knowledge, elizaLogger, IAgentRuntime, Memory, AgentRuntime } from '@ai
 export class MemoryPropertyStorage extends BasePropertyStorage {
     private properties: Map<string, PropertyData> = new Map();
     private nextId: number = 1;
+    private runtime: AgentRuntime | null = null;
 
-    constructor(private runtime: AgentRuntime) {
+    constructor() {
         super();
+    }
+
+    initialize(runtime: AgentRuntime) {
+        this.runtime = runtime;
     }
 
     async addProperty(property: PropertyData): Promise<string> {
@@ -52,6 +57,10 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
     }
 
     async searchByFilters(filters: FilterGroup): Promise<SearchResult[]> {
+        if (!this.runtime) {
+            throw new Error('Runtime not initialized');
+        }
+
         elizaLogger.info('Searching properties with filters:', filters);
 
         // Create a memory object for knowledge search

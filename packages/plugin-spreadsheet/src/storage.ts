@@ -1,9 +1,15 @@
+import { IAgentRuntime } from '@ai16z/eliza';
 import { PropertyData, SearchOptions, SearchResult, FilterGroup, StorageError, StorageErrorCode } from './types';
 
 /**
  * Core interface for property storage operations
  */
 export interface PropertyStorage {
+    /**
+     * Initialize the storage with runtime
+     */
+    initialize(runtime: IAgentRuntime): void;
+
     /**
      * Add a single property to storage
      * @throws {StorageError} If property is invalid or operation fails
@@ -108,5 +114,9 @@ export abstract class BasePropertyStorage implements PropertyStorage {
                 StorageErrorCode.VECTOR_MISMATCH
             );
         }
+    }
+
+    initialize(runtime: IAgentRuntime): void {
+        // To be implemented by subclasses
     }
 }

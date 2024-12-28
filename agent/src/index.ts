@@ -602,7 +602,7 @@ export async function createAgent(
             getSecret(character, "TON_PRIVATE_KEY") ? tonPlugin : null,
             getSecret(character, "SUI_PRIVATE_KEY") ? suiPlugin : null,
             getSecret(character, "STORY_PRIVATE_KEY") ? storyPlugin : null,
-            spreadsheetPlugin // Add our spreadsheet plugin
+            spreadsheetPlugin // Always include spreadsheet plugin
         ].filter(Boolean),
         providers: [],
         actions: [],
