@@ -1,4 +1,4 @@
-import { Plugin, IAgentRuntime, Memory, State, ServiceType, elizaLogger } from '@ai16z/eliza';
+import { Plugin, AgentRuntime, IAgentRuntime, Memory, State, ServiceType, elizaLogger } from '@ai16z/eliza';
 import { PropertyStorage } from './storage';
 import { MemoryPropertyStorage } from './storage/memory-storage';
 import { PropertyStorageService } from './services';
@@ -92,7 +92,10 @@ const searchPropertiesAction: Action = {
 
 // Create a factory function that takes runtime and returns the plugin
 export function createPlugin(runtime: IAgentRuntime): Plugin {
-    const storage = new MemoryPropertyStorage(runtime);
+    if (!(runtime instanceof AgentRuntime)) {
+        throw new Error('This plugin requires an AgentRuntime instance');
+    }
+    const storage = new MemoryPropertyStorage(runtime as AgentRuntime);
     const service = new PropertyStorageService(storage);
 
     return {

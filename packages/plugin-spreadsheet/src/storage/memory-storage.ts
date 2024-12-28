@@ -1,6 +1,6 @@
 import { PropertyData, SearchOptions, SearchResult, FilterGroup, StorageError, StorageErrorCode, MetadataFilter } from '../types';
 import { BasePropertyStorage } from '../storage';
-import { knowledge, elizaLogger, IAgentRuntime, Memory } from '@ai16z/eliza';
+import { knowledge, elizaLogger, IAgentRuntime, Memory, AgentRuntime } from '@ai16z/eliza';
 
 /**
  * In-memory implementation of PropertyStorage
@@ -9,7 +9,7 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
     private properties: Map<string, PropertyData> = new Map();
     private nextId: number = 1;
 
-    constructor(private runtime: IAgentRuntime) {
+    constructor(private runtime: AgentRuntime) {
         super();
     }
 
