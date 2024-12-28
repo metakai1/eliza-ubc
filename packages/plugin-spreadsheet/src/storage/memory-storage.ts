@@ -53,7 +53,7 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
 
     async searchByFilters(filters: FilterGroup): Promise<SearchResult[]> {
         elizaLogger.info('Searching properties with filters:', filters);
-        
+
         // Create a memory object for knowledge search
         const memory: Memory = {
             agentId: this.runtime.agentId,
@@ -105,7 +105,7 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
                 }
             });
 
-            return group.operator === 'AND' 
+            return group.operator === 'AND'
                 ? results.every(r => r)
                 : results.some(r => r);
         };
@@ -120,7 +120,7 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
             }));
 
         elizaLogger.info('Direct search results:', directResults);
-        
+
         // Combine and return all results
         return [...knowledgeResults, ...directResults];
     }
@@ -131,7 +131,7 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
         };
 
         const groupToText = (group: FilterGroup): string => {
-            const filterTexts = group.filters.map(f => 
+            const filterTexts = group.filters.map(f =>
                 'operator' in f ? groupToText(f as FilterGroup) : filterToText(f as MetadataFilter)
             );
             return filterTexts.join(group.operator === 'AND' ? ' AND ' : ' OR ');
@@ -142,5 +142,10 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
 
     async getCount(): Promise<number> {
         return this.properties.size;
+    }
+
+    async clear(): Promise<void> {
+        this.properties.clear();
+        this.nextId = 1;
     }
 }

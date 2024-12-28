@@ -91,9 +91,9 @@ const searchPropertiesAction: Action = {
 };
 
 // Create a factory function that takes runtime and returns the plugin
-/* export function createPlugin(runtime: IAgentRuntime): Plugin {
+export function createPlugin(runtime: IAgentRuntime): Plugin {
     const storage = new MemoryPropertyStorage(runtime);
-    const service = new PropertyStorageService(storage, runtime);
+    const service = new PropertyStorageService(storage);
 
     return {
         name: 'property-search',
@@ -101,15 +101,7 @@ const searchPropertiesAction: Action = {
         services: [service],
         actions: [searchPropertiesAction]
     };
-} */
+}
 
 // Export a default plugin for backwards compatibility
-export const plugin: Plugin = {
-    name: 'property-search',
-    description: 'Search and manage property data',
-    initialize: (runtime: IAgentRuntime) => {
-        const storage = new MemoryPropertyStorage(runtime);
-        return [new PropertyStorageService(storage, runtime)];
-    },
-    actions: [searchPropertiesAction]
-};
+export const plugin = createPlugin;
