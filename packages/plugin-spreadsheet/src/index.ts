@@ -29,9 +29,11 @@ const searchPropertiesAction: Action = {
         state?: State,
         options?: { [key: string]: unknown }
     ): Promise<unknown> => {
-        const storage = new MemoryPropertyStorage(runtime);
-        const service = new PropertyStorageService(storage, runtime);
-        
+        const service = runtime.getService<PropertyStorageService>(ServiceType.PROPERTY_STORAGE);
+        if (!service) {
+            throw new Error('Property storage service not available');
+        }
+
         // Extract the search query from the message text
         const text = message.content?.text || '';
         elizaLogger.info('Property search input text:', text);
@@ -88,11 +90,26 @@ const searchPropertiesAction: Action = {
     validate: async () => Promise.resolve(true)
 };
 
+// Create a factory function that takes runtime and returns the plugin
+/* export function createPlugin(runtime: IAgentRuntime): Plugin {
+    const storage = new MemoryPropertyStorage(runtime);
+    const service = new PropertyStorageService(storage, runtime);
+
+    return {
+        name: 'property-search',
+        description: 'Search and manage property data',
+        services: [service],
+        actions: [searchPropertiesAction]
+    };
+} */
+
+// Export a default plugin for backwards compatibility
 export const plugin: Plugin = {
     name: 'property-search',
     description: 'Search and manage property data',
-    services: [],  // We'll create services in the handler since we need runtime
+    initialize: (runtime: IAgentRuntime) => {
+        const storage = new MemoryPropertyStorage(runtime);
+        return [new PropertyStorageService(storage, runtime)];
+    },
     actions: [searchPropertiesAction]
 };
-
-export default plugin;
