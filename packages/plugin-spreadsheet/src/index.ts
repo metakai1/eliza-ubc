@@ -29,18 +29,28 @@ const searchPropertiesAction: Action = {
         state?: State,
         options?: { [key: string]: unknown }
     ): Promise<unknown> => {
-        elizaLogger.debug('search-properties handler starting', {
+        elizaLogger.info('search-properties handler starting', {
             messageText: message?.content?.text,
             hasState: !!state,
             hasOptions: !!options,
             runtimeType: runtime?.constructor?.name
         });
 
-        const service = runtime.getService<PropertyStorageService>(ServiceType.PROPERTY_STORAGE);
+        if (!runtime) {
+            elizaLogger.error('Runtime not initialized');
+            throw new Error('Runtime not initialized');
+        }
+
+
+/*         const service = runtime.getService<PropertyStorageService>(ServiceType.PROPERTY_STORAGE);
         if (!service) {
             elizaLogger.error('Property storage service not available');
             throw new Error('Property storage service not available');
         }
+ */
+        // Use the plugin's service instance directly
+        await service.initialize(runtime);
+
 
         // Extract the search query from the message text
         const text = message.content?.text || '';
@@ -93,8 +103,10 @@ const searchPropertiesAction: Action = {
             }
         };
     },
-    validate: async () => Promise.resolve(true)
-};
+    validate: async (runtime: IAgentRuntime, message: Memory): Promise<boolean> => {
+        return !!runtime && !!message;
+    }
+} as Action;
 
 // Create the plugin instance
 const storage = new MemoryPropertyStorage();
@@ -105,5 +117,7 @@ export const spreadsheetPlugin: Plugin = {
     name: "spreadsheet",
     description: "Plugin for managing property data in a spreadsheet format",
     actions: [searchPropertiesAction],
-    services: [service]
+    services: [service],
+    evaluators: [],
+    providers: []
 };
