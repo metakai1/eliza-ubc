@@ -2,20 +2,25 @@
   "name": "@ai16z/plugin-spreadsheet",
   "version": "0.0.1",
   "description": "Spreadsheet data lookup and interpretation plugin for Eliza",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -b",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@ai16z/eliza": "workspace:*",
+    "@ai16z/adapter-postgres": "workspace:*",
     "csv-parse": "^5.5.3",
     "papaparse": "^5.4.1"
   },
   "devDependencies": {
     "@types/papaparse": "^5.3.14",
     "rimraf": "^5.0.5",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.3"
   }
 }
