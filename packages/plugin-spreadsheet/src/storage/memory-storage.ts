@@ -12,9 +12,15 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
 
     constructor() {
         super();
+        elizaLogger.debug('MemoryPropertyStorage: Constructor called');
     }
 
     initialize(runtime: AgentRuntime) {
+        elizaLogger.debug('MemoryPropertyStorage: Initializing with runtime', {
+            hasRuntime: !!runtime,
+            runtimeType: runtime?.constructor?.name,
+            agentId: runtime?.agentId
+        });
         this.runtime = runtime;
     }
 
@@ -57,8 +63,14 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
     }
 
     async searchByFilters(filters: FilterGroup): Promise<SearchResult[]> {
+        elizaLogger.debug('MemoryPropertyStorage: Searching by filters', {
+            hasRuntime: !!this.runtime,
+            filtersLength: filters?.filters?.length || 0
+        });
+        
         if (!this.runtime) {
-            throw new Error('Runtime not initialized');
+            elizaLogger.error('MemoryPropertyStorage: Runtime not initialized for searchByFilters');
+            throw new StorageError('Runtime not initialized', StorageErrorCode.OPERATION_FAILED);
         }
 
         elizaLogger.info('Searching properties with filters:', filters);

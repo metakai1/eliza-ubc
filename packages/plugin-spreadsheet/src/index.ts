@@ -1,4 +1,4 @@
-import { Plugin, AgentRuntime, IAgentRuntime, Memory, State, ServiceType, elizaLogger } from '@ai16z/eliza';
+import { Plugin, IAgentRuntime, Memory, State, ServiceType, elizaLogger } from '@ai16z/eliza';
 import { PropertyStorage } from './storage';
 import { MemoryPropertyStorage } from './storage/memory-storage';
 import { PropertyStorageService } from './services';
@@ -8,23 +8,18 @@ const searchPropertiesAction: Action = {
     name: 'search-properties',
     description: 'Search for properties using natural language',
     similes: [
-        'search-properties',
-        'Find properties matching criteria',
-        'Search real estate listings',
-        'Search real estate listings for',
-        'Search for properties',
-        'Query property database',
-        'Show me properties',
-        'Look for properties',
-        'Find real estate',
-        'Search properties'
+        'find properties',
+        'search properties',
+        'lookup properties',
+        'list properties',
+        'search properties for matches'
     ],
     examples: [[
         {
-            user: 'User',
+            user: "user",
             content: {
-                text: 'Search real estate listings for beachfront properties in Miami',
-                action: 'search-properties',
+                text: "Search properties for sale",
+                action: "search-properties"
             }
         }
     ]],
@@ -34,10 +29,11 @@ const searchPropertiesAction: Action = {
         state?: State,
         options?: { [key: string]: unknown }
     ): Promise<unknown> => {
-        elizaLogger.info('search-properties handler starting with:', {
+        elizaLogger.debug('search-properties handler starting', {
             messageText: message?.content?.text,
             hasState: !!state,
-            hasOptions: !!options
+            hasOptions: !!options,
+            runtimeType: runtime?.constructor?.name
         });
 
         const service = runtime.getService<PropertyStorageService>(ServiceType.PROPERTY_STORAGE);
@@ -104,12 +100,10 @@ const searchPropertiesAction: Action = {
 const storage = new MemoryPropertyStorage();
 const service = new PropertyStorageService(storage);
 
+// Export the plugin
 export const spreadsheetPlugin: Plugin = {
-    name: 'property-search',
-    description: 'Search and manage property data',
-    services: [service],
-    actions: [searchPropertiesAction]
+    name: "spreadsheet",
+    description: "Plugin for managing property data in a spreadsheet format",
+    actions: [searchPropertiesAction],
+    services: [service]
 };
-
-// Export the plugin as default
-export default spreadsheetPlugin;

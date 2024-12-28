@@ -59,8 +59,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import yargs from "yargs";
-import calculatorPlugin from "@ai16z/plugin-calculator";
-import spreadsheetPlugin from "@ai16z/plugin-spreadsheet";
+import { spreadsheetPlugin } from "@ai16z/plugin-spreadsheet";
 //import { loadProperties } from "./propertyLoader";
 
 /* // Example property data
