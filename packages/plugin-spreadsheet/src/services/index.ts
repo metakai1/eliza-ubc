@@ -56,9 +56,15 @@ export class PropertyStorageService implements Service {
         try {
             const results = await this.storage.searchByFilters(filters);
             elizaLogger.info('PropertyStorageService search results:', {
-                count: results.length,
-                results: results.map(r => ({ id: r.property.id, name: r.property.name }))
+                hasResults: !!results,
+                resultsType: results ? typeof results : 'undefined',
+                isArray: Array.isArray(results),
+                count: results?.length || 0,
+                results: results ? results.map(r => ({ id: r?.property?.id, name: r?.property?.name })) : []
             });
+            if (!results) {
+                throw new StorageError(StorageErrorCode.INTERNAL_ERROR, 'Search returned no results');
+            }
             return results;
         } catch (error) {
             elizaLogger.error('Error in PropertyStorageService.searchByFilters:', error);
