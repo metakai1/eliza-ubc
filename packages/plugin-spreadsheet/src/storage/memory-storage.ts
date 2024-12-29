@@ -86,11 +86,13 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
             }
         };
 
-        elizaLogger.info('Memory object for knowledge search:', {
+/*         elizaLogger.info('Memory object for knowledge search:', {
             agentId: memory.agentId,
-            query: memory.content.text,
+            query: memory.content.text.split(' OR ').join('\nOR '),
             filters: JSON.stringify(filters, null, 2)
-        });
+        }); */
+
+        elizaLogger.info('Memory object for knowledge search:', memory);
 
         // Get results from knowledge system
         const knowledgeItems = await knowledge.get(this.runtime, memory);
@@ -154,13 +156,16 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
     }
 
     private filtersToQuery(filters: FilterGroup): string {
+        elizaLogger.info('DEBUG - filtersToQuery input:', JSON.stringify(filters, null, 2));
+
         const filterToText = (filter: MetadataFilter): string => {
             return `${filter.field}:${filter.value}`;
         };
 
         const groupToText = (group: FilterGroup): string => {
+            elizaLogger.info('DEBUG - groupToText input:', JSON.stringify(group, null, 2));
             const filterTexts = group.filters.map(f =>
-                'operator' in f ? groupToText(f as FilterGroup) : filterToText(f as MetadataFilter)
+                'filters' in f ? groupToText(f as FilterGroup) : filterToText(f as MetadataFilter)
             );
             return filterTexts.join(group.operator === 'AND' ? ' AND ' : ' OR ');
         };
