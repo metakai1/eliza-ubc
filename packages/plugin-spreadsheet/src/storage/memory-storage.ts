@@ -86,6 +86,12 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
             }
         };
 
+        elizaLogger.info('Memory object for knowledge search:', {
+            agentId: memory.agentId,
+            query: memory.content.text,
+            filters: JSON.stringify(filters, null, 2)
+        });
+
         // Get results from knowledge system
         const knowledgeItems = await knowledge.get(this.runtime, memory);
         elizaLogger.info('Retrieved knowledge items:', knowledgeItems);

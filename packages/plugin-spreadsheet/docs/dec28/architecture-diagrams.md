@@ -644,3 +644,123 @@ const results = knowledgeItems.map(item => ({
    - Check runtime before queries
    - Handle knowledge system timeouts
    - Provide fallback behavior
+
+## Filter to Query Conversion
+
+### Filter Structure
+```typescript
+interface FilterGroup {
+    operator: 'AND' | 'OR';
+    filters: (MetadataFilter | FilterGroup)[];
+}
+
+interface MetadataFilter {
+    field: string;
+    operator: string;
+    value: any;
+}
+```
+
+### Conversion Process
+```mermaid
+flowchart TD
+    subgraph Input[Input Filter Group]
+        F1[FilterGroup] --> O1[operator: AND]
+        F1 --> FA[filters array]
+        FA --> MF1[MetadataFilter 1]
+        FA --> MF2[MetadataFilter 2]
+        FA --> NFG[Nested FilterGroup]
+    end
+
+    subgraph Process[Conversion Process]
+        GT[groupToText] --> FT[filterToText]
+        GT --> RGT[Recursive groupToText]
+        FT --> Join[Join with operator]
+        RGT --> Join
+    end
+
+    subgraph Example[Example Conversion]
+        E1["location:beach AND price:1000000 AND (type:house OR type:apartment)"]
+    end
+
+    Input --> Process
+    Process --> Example
+```
+
+### How It Works
+
+1. **Base Case - Single Filter**
+   ```typescript
+   filterToText(filter: MetadataFilter): string {
+       return `${filter.field}:${filter.value}`;
+   }
+   ```
+   - Converts a single filter to "field:value"
+   - Example: `{ field: 'price', value: 1000000 }` → `"price:1000000"`
+
+2. **Recursive Case - Filter Group**
+   ```typescript
+   groupToText(group: FilterGroup): string {
+       const filterTexts = group.filters.map(f =>
+           'operator' in f ? groupToText(f) : filterToText(f)
+       );
+       return filterTexts.join(group.operator === 'AND' ? ' AND ' : ' OR ');
+   }
+   ```
+   - Maps each filter through either `filterToText` or recursive `groupToText`
+   - Joins results with AND/OR based on group operator
+
+### Example Walkthrough
+
+```typescript
+const filters = {
+    operator: 'AND',
+    filters: [
+        { field: 'location', value: 'beach' },
+        { field: 'price', value: 1000000 },
+        {
+            operator: 'OR',
+            filters: [
+                { field: 'type', value: 'house' },
+                { field: 'type', value: 'apartment' }
+            ]
+        }
+    ]
+};
+
+// Step 1: Process top-level AND group
+//   → Map each filter:
+//     1. "location:beach"
+//     2. "price:1000000"
+//     3. Process nested OR group:
+//        → Map nested filters:
+//          - "type:house"
+//          - "type:apartment"
+//        → Join with OR: "(type:house OR type:apartment)"
+//   → Join all with AND
+
+// Final Result:
+// "location:beach AND price:1000000 AND (type:house OR type:apartment)"
+```
+
+### Key Points
+
+1. **Recursion**
+   - Handles nested filter groups of any depth
+   - Each group is processed independently
+   - Results are combined based on operators
+
+2. **Type Checking**
+   - Uses `'operator' in f` to distinguish between:
+     - MetadataFilter (single filter)
+     - FilterGroup (nested group)
+
+3. **String Building**
+   - Builds query from bottom up
+   - Maintains operator precedence
+   - Creates human-readable format
+
+4. **Use Cases**
+   - Complex property searches
+   - Multi-criteria filtering
+   - Nested condition groups
