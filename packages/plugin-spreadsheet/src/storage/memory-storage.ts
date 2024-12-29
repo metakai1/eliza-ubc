@@ -82,15 +82,10 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
             userId: this.runtime.agentId,
             roomId: this.runtime.agentId,
             content: {
-                text: this.filtersToQuery(filters)
+                // Use the first filter's value as the semantic search query
+                text: (filters.filters[0] as MetadataFilter).value
             }
         };
-
-/*         elizaLogger.info('Memory object for knowledge search:', {
-            agentId: memory.agentId,
-            query: memory.content.text.split(' OR ').join('\nOR '),
-            filters: JSON.stringify(filters, null, 2)
-        }); */
 
         elizaLogger.info('Memory object for knowledge search:', memory);
 
@@ -153,24 +148,6 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
 
         // Combine and return all results
         return [...knowledgeResults, ...directResults];
-    }
-
-    private filtersToQuery(filters: FilterGroup): string {
-        elizaLogger.info('DEBUG - filtersToQuery input:', JSON.stringify(filters, null, 2));
-
-        const filterToText = (filter: MetadataFilter): string => {
-            return `${filter.field}:${filter.value}`;
-        };
-
-        const groupToText = (group: FilterGroup): string => {
-            elizaLogger.info('DEBUG - groupToText input:', JSON.stringify(group, null, 2));
-            const filterTexts = group.filters.map(f =>
-                'filters' in f ? groupToText(f as FilterGroup) : filterToText(f as MetadataFilter)
-            );
-            return filterTexts.join(group.operator === 'AND' ? ' AND ' : ' OR ');
-        };
-
-        return groupToText(filters);
     }
 
     async getCount(): Promise<number> {
