@@ -131,6 +131,31 @@ graph TB
     PropertyStorageService --> AgentRuntime
 ```
 
+## Initialization Flow
+```mermaid
+sequenceDiagram
+    participant Eliza
+    participant PSS as PropertyStorageService
+    participant MPS as MemoryPropertyStorage
+    
+    Note over Eliza: Framework startup
+    
+    Eliza->>PSS: new PropertyStorageService(storage)
+    PSS->>MPS: new MemoryPropertyStorage()
+    Note over MPS: Constructs empty Map<br/>Sets nextId = 1
+    
+    Eliza->>PSS: initialize(runtime)
+    Note over PSS: Logs initialization start
+    PSS->>PSS: Store runtime
+    PSS->>MPS: initialize(runtime)
+    Note over MPS: Stores runtime<br/>Ready for operations
+    Note over PSS: Logs initialization complete
+    
+    Note over PSS,MPS: System ready for operations
+```
+
+This diagram shows the initialization sequence from framework startup to ready state.
+
 ## Error Handling Flow
 ```mermaid
 flowchart TD
@@ -154,6 +179,7 @@ These diagrams show different aspects of the property storage system:
 3. **Runtime State Flow**: Shows the different states a PropertyStorageService instance can be in
 4. **Data Flow**: Demonstrates how data moves through the system during a search operation
 5. **Component Architecture**: Shows how the components fit into the larger system
-6. **Error Handling Flow**: Illustrates how errors are handled throughout the system
+6. **Initialization Flow**: Shows the initialization sequence from framework startup to ready state
+7. **Error Handling Flow**: Illustrates how errors are handled throughout the system
 
 Each diagram provides a different perspective on how the system works, making it easier to understand the overall architecture and individual component responsibilities.
