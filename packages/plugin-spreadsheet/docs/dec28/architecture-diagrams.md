@@ -451,9 +451,10 @@ const id = await storage.addProperty({
 
 // Search
 const results = await storage.searchByFilters({
-    operator: "AND",
+    operator: 'AND',
     filters: [
-        { field: "name", operator: "contains", value: "Test" }
+        { field: 'location', operator: '$in', value: 'beach' },
+        { field: 'price', operator: '$lt', value: 1000000 }
     ]
 });
 ```
@@ -532,7 +533,7 @@ const memory: Memory = {
        end
        
        subgraph Output
-           Q1[Query: "Find properties with name containing beach"]
+           Q1[Natural language query]
        end
        
        Input --> Translation --> Output
@@ -546,12 +547,30 @@ const memory: Memory = {
        P2 --> P3[Apply Filters]
        P3 --> P4[Create SearchResult]
        
-       subgraph SearchResult
-           S1[id: string]
-           S2[property: PropertyData]
-           S3[similarity: number]
-           S4[matchedFilters: string[]]
+       subgraph Results
+           R1[ID]
+           R2[Property]
+           R3[Similarity]
+           R4[Matched Filters]
        end
+       
+       P4 --> Results
+   ```
+   ```mermaid
+   flowchart TD
+       K1[Knowledge Items] --> P1[Extract Metadata]
+       P1 --> P2[Convert to PropertyData]
+       P2 --> P3[Apply Filters]
+       P3 --> P4[Create SearchResult]
+       
+       subgraph Results
+           R1[ID]
+           R2[Property]
+           R3[Similarity]
+           R4[Matched Filters]
+       end
+       
+       P4 --> Results
    ```
 
 ### Example Knowledge Flow
