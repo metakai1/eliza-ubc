@@ -7,7 +7,7 @@ import { LensAgentClient } from "@ai16z/client-lens";
 import { SlackClientInterface } from "@ai16z/client-slack";
 import { TelegramClientInterface } from "@ai16z/client-telegram";
 import { TwitterClientInterface } from "@ai16z/client-twitter";
-import { databaseLoaderPlugin,loadMemoriesFromFile } from "@ai16z/plugin-load-database";
+import { databaseLoaderPlugin } from "@ai16z/plugin-load-database";
 import {
     AgentRuntime,
     CacheManager,
@@ -673,7 +673,7 @@ async function startAgent(
         elizaLogger.debug(`Started ${character.name} as ${runtime.agentId}`);
 
         // Load memories from file if MEMORIES_FILE is set
-        const memoriesFile = process.env.MEMORIES_FILE;
+/*         const memoriesFile = process.env.MEMORIES_FILE;
         if (memoriesFile) {
             try {
                 await loadMemoriesFromFile(runtime, memoriesFile);
@@ -682,7 +682,7 @@ async function startAgent(
                 elizaLogger.error(`Failed to load memories from ${memoriesFile}:`, error);
             }
         }
-
+ */
         return runtime;
     } catch (error) {
         elizaLogger.error(
