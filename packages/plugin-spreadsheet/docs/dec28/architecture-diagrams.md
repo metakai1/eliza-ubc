@@ -458,40 +458,170 @@ const results = await storage.searchByFilters({
 });
 ```
 
-The Map in [MemoryPropertyStorage](cci:1://file:///home/kai/eliza/eliza/packages/plugin-spreadsheet/src/storage/memory-storage.ts:8:0-172:1) provides these key operations:
+## Knowledge System Integration
 
-1. **Set**: `properties.set(id, property)`
-   - Stores or updates a property with a given ID
-   - Example: `properties.set("1", { id: "1", name: "Property 1" })`
+### Knowledge Flow
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Storage as MemoryPropertyStorage
+    participant Runtime as AgentRuntime
+    participant Knowledge as Knowledge System
+    participant Memory as Memory Store
+    
+    Client->>Storage: searchByFilters(filters)
+    Storage->>Storage: filtersToQuery()
+    
+    Note over Storage: Convert filters to natural language
+    
+    Storage->>Storage: Create Memory object
+    Storage->>Knowledge: knowledge.get(runtime, memory)
+    
+    activate Knowledge
+    Knowledge->>Memory: Search memory store
+    Memory-->>Knowledge: Return matches
+    Knowledge-->>Storage: Return knowledge items
+    deactivate Knowledge
+    
+    Storage->>Storage: Convert to PropertyData
+    Storage->>Storage: Apply additional filters
+    Storage-->>Client: Return results
+```
 
-2. **Get**: `properties.get(id)`
-   - Retrieves a property by ID
-   - Returns undefined if not found
-   - Example: `properties.get("1")`
+### Filter to Query Conversion
+```mermaid
+flowchart TD
+    subgraph Filter Structure
+        F1[FilterGroup] --> F2[Operator: AND/OR]
+        F1 --> F3[Filters Array]
+        F3 --> F4[MetadataFilter]
+        F3 --> F5[Nested FilterGroup]
+    end
+    
+    subgraph Query Generation
+        Q1[filtersToQuery] --> Q2[Process Operator]
+        Q2 --> Q3[Process Filters]
+        Q3 --> Q4[Generate Text]
+    end
+    
+    F1 -.->|Input| Q1
+    Q4 -.->|Output| T1[Natural Language Query]
+```
 
-3. **Has**: `properties.has(id)`
-   - Checks if a property exists
-   - Example: `if (properties.has("1")) { ... }`
+### Memory Object Structure
+```typescript
+const memory: Memory = {
+    agentId: runtime.agentId,
+    userId: runtime.agentId,
+    roomId: runtime.agentId,
+    content: {
+        text: queryText  // Converted from filters
+    }
+};
+```
 
-4. **Delete**: `properties.delete(id)`
-   - Removes a property
-   - Returns true if successful
-   - Example: `properties.delete("1")`
+### Knowledge Integration Details
 
-5. **Entries**: `properties.entries()`
-   - Gets all properties for iteration
-   - Example: `Array.from(properties.entries())`
+1. **Filter Translation**
+   ```mermaid
+   flowchart LR
+       subgraph Input
+           F1[FilterGroup] --> F2[field: name]
+           F1 --> F3[operator: contains]
+           F1 --> F4[value: beach]
+       end
+       
+       subgraph Output
+           Q1[Query: "Find properties with name containing beach"]
+       end
+       
+       Input --> Translation --> Output
+   ```
 
-These diagrams show different aspects of the property storage system:
+2. **Knowledge Response Processing**
+   ```mermaid
+   flowchart TD
+       K1[Knowledge Items] --> P1[Extract Metadata]
+       P1 --> P2[Convert to PropertyData]
+       P2 --> P3[Apply Filters]
+       P3 --> P4[Create SearchResult]
+       
+       subgraph SearchResult
+           S1[id: string]
+           S2[property: PropertyData]
+           S3[similarity: number]
+           S4[matchedFilters: string[]]
+       end
+   ```
 
-1. **Class Hierarchy**: Shows the inheritance and implementation relationships between classes
-2. **Component Interaction**: Illustrates how the different components communicate during operations
-3. **Runtime State Flow**: Shows the different states a PropertyStorageService instance can be in
-4. **Data Flow**: Demonstrates how data moves through the system during a search operation
-5. **Component Architecture**: Shows how the components fit into the larger system
-6. **Initialization Flow**: Shows the initialization sequence from framework startup to ready state
-7. **Abstract Class Structure**: Shows the relationship between the interface, abstract class, and concrete implementation
-8. **Error Handling Flow**: Illustrates how errors are handled throughout the system
-9. **Map Operations**: Shows the operations performed on the Map in MemoryPropertyStorage
+### Example Knowledge Flow
 
-Each diagram provides a different perspective on how the system works, making it easier to understand the overall architecture and individual component responsibilities.
+```typescript
+// 1. Input Filter
+const filters = {
+    operator: 'AND',
+    filters: [
+        { field: 'location', operator: '$in', value: 'beach' },
+        { field: 'price', operator: '$lt', value: 1000000 }
+    ]
+};
+
+// 2. Generated Query
+const query = "Find properties located near the beach with price less than 1 million";
+
+// 3. Memory Object
+const memory = {
+    agentId: runtime.agentId,
+    content: { text: query }
+};
+
+// 4. Knowledge Response
+const knowledgeItems = await knowledge.get(runtime, memory);
+
+// 5. Converted Results
+const results = knowledgeItems.map(item => ({
+    id: item.id,
+    property: item.content.metadata,
+    similarity: 1.0,
+    matchedFilters: []
+}));
+```
+
+### Key Points
+
+1. **Query Generation**
+   - Filters are converted to natural language
+   - Complex filters are handled recursively
+   - Query is optimized for knowledge search
+
+2. **Knowledge Integration**
+   - Uses Eliza's knowledge system
+   - Maintains runtime context
+   - Handles async operations
+
+3. **Result Processing**
+   - Converts knowledge items to properties
+   - Applies additional filtering
+   - Maintains metadata and context
+
+4. **Error Handling**
+   - Validates runtime availability
+   - Handles knowledge system errors
+   - Provides detailed error context
+
+### Best Practices
+
+1. **Query Construction**
+   - Keep queries focused and specific
+   - Use natural language patterns
+   - Include relevant context
+
+2. **Result Handling**
+   - Process results in batches
+   - Validate metadata conversion
+   - Apply post-processing filters
+
+3. **Error Management**
+   - Check runtime before queries
+   - Handle knowledge system timeouts
+   - Provide fallback behavior
