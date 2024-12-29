@@ -211,6 +211,64 @@ flowchart TD
     Log --> End[End Operation]
 ```
 
+## Map Operations
+```mermaid
+graph TD
+    subgraph Map Operations
+        direction LR
+        M[Map<string, PropertyData>]
+        
+        subgraph Add Property
+            A1[Generate ID] --> A2[properties.set]
+            A2 --> A3[Store Property]
+        end
+        
+        subgraph Get Property
+            G1[properties.get] --> G2{Found?}
+            G2 -->|Yes| G3[Return Copy]
+            G2 -->|No| G4[Throw Error]
+        end
+        
+        subgraph Update Property
+            U1[properties.has] --> U2{Exists?}
+            U2 -->|Yes| U3[Validate] --> U4[properties.set]
+            U2 -->|No| U5[Throw Error]
+        end
+        
+        subgraph Delete Property
+            D1[properties.delete] --> D2{Success?}
+            D2 -->|Yes| D3[Done]
+            D2 -->|No| D4[Throw Error]
+        end
+    end
+    
+    style M fill:#f9f,stroke:#333,stroke-width:4px
+```
+
+The Map in [MemoryPropertyStorage](cci:1://file:///home/kai/eliza/eliza/packages/plugin-spreadsheet/src/storage/memory-storage.ts:8:0-172:1) provides these key operations:
+
+1. **Set**: `properties.set(id, property)`
+   - Stores or updates a property with a given ID
+   - Example: `properties.set("1", { id: "1", name: "Property 1" })`
+
+2. **Get**: `properties.get(id)`
+   - Retrieves a property by ID
+   - Returns undefined if not found
+   - Example: `properties.get("1")`
+
+3. **Has**: `properties.has(id)`
+   - Checks if a property exists
+   - Example: `if (properties.has("1")) { ... }`
+
+4. **Delete**: `properties.delete(id)`
+   - Removes a property
+   - Returns true if successful
+   - Example: `properties.delete("1")`
+
+5. **Entries**: `properties.entries()`
+   - Gets all properties for iteration
+   - Example: `Array.from(properties.entries())`
+
 These diagrams show different aspects of the property storage system:
 
 1. **Class Hierarchy**: Shows the inheritance and implementation relationships between classes
@@ -221,5 +279,6 @@ These diagrams show different aspects of the property storage system:
 6. **Initialization Flow**: Shows the initialization sequence from framework startup to ready state
 7. **Abstract Class Structure**: Shows the relationship between the interface, abstract class, and concrete implementation
 8. **Error Handling Flow**: Illustrates how errors are handled throughout the system
+9. **Map Operations**: Shows the operations performed on the Map in MemoryPropertyStorage
 
 Each diagram provides a different perspective on how the system works, making it easier to understand the overall architecture and individual component responsibilities.
