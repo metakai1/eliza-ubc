@@ -245,6 +245,219 @@ graph TD
     style M fill:#f9f,stroke:#333,stroke-width:4px
 ```
 
+## MemoryPropertyStorage Deep Dive
+
+### State Management
+```mermaid
+classDiagram
+    class MemoryPropertyStorage {
+        -properties: Map<string, PropertyData>
+        -nextId: number
+        -runtime: AgentRuntime
+        +initialize(runtime)
+        +addProperty(property)
+        +getProperty(id)
+        +updateProperty(id, property)
+        +deleteProperty(id)
+        +searchByFilters(filters)
+        +searchByVector(vector, options)
+        -validateProperty(property)
+    }
+    
+    class PropertyData {
+        +id: string
+        +name: string
+        +description: string
+        +metadata: object
+    }
+    
+    MemoryPropertyStorage --> "0..*" PropertyData : stores
+```
+
+### Search Flow
+```mermaid
+sequenceDiagram
+    participant Client
+    participant MPS as MemoryPropertyStorage
+    participant Map as Properties Map
+    participant Knowledge as Knowledge System
+    participant Runtime as Agent Runtime
+    
+    Client->>MPS: searchByFilters(filters)
+    MPS->>MPS: Check runtime initialized
+    MPS->>MPS: Convert filters to query
+    MPS->>Runtime: Get knowledge context
+    Runtime->>Knowledge: Search
+    Knowledge-->>MPS: Return matches
+    MPS->>Map: Get matching properties
+    Map-->>MPS: Return properties
+    MPS->>MPS: Apply filters
+    MPS-->>Client: Return filtered results
+```
+
+### Property Lifecycle
+```mermaid
+stateDiagram-v2
+    [*] --> Validated: addProperty()
+    Validated --> Stored: properties.set()
+    Stored --> Retrieved: getProperty()
+    Retrieved --> Updated: updateProperty()
+    Updated --> Stored: properties.set()
+    Stored --> Deleted: deleteProperty()
+    Deleted --> [*]
+    
+    Stored --> Searched: searchByFilters()
+    Searched --> Stored
+    
+    state Validated {
+        [*] --> ValidateFields
+        ValidateFields --> CheckRequired
+        CheckRequired --> [*]
+    }
+```
+
+### Implementation Details
+
+#### 1. Core Data Structure
+```typescript
+class MemoryPropertyStorage {
+    private properties: Map<string, PropertyData> = new Map();
+    private nextId: number = 1;
+    private runtime: AgentRuntime | null = null;
+}
+```
+- Uses JavaScript Map for O(1) access
+- Maintains auto-incrementing ID
+- Stores runtime for knowledge operations
+
+#### 2. Key Operations
+
+##### Add Property
+```mermaid
+flowchart TD
+    A[Start] --> B[Validate Property]
+    B --> C{Valid?}
+    C -->|Yes| D[Generate ID]
+    D --> E[Store in Map]
+    E --> F[Return ID]
+    C -->|No| G[Throw Error]
+```
+
+##### Search By Filters
+```mermaid
+flowchart TD
+    A[Start] --> B[Check Runtime]
+    B --> C[Convert Filters to Query]
+    C --> D[Get Knowledge Results]
+    D --> E[Match Properties]
+    E --> F[Apply Filters]
+    F --> G[Return Results]
+```
+
+#### 3. Error Handling
+```mermaid
+flowchart TD
+    subgraph Error Types
+        E1[NOT_FOUND]
+        E2[INVALID_INPUT]
+        E3[INTERNAL_ERROR]
+    end
+    
+    subgraph Scenarios
+        S1[Missing Property] --> E1
+        S2[Invalid Data] --> E2
+        S3[Runtime Missing] --> E3
+    end
+```
+
+### Key Features
+
+1. **In-Memory Storage**
+   - Fast access and operations
+   - No persistence between restarts
+   - Thread-safe operations
+
+2. **ID Management**
+   - Auto-incrementing IDs
+   - Guaranteed uniqueness
+   - Simple string format
+
+3. **Property Validation**
+   - Required field checking
+   - Type validation
+   - Format validation
+
+4. **Search Capabilities**
+   - Filter-based search
+   - Vector similarity search
+   - Knowledge system integration
+
+5. **Runtime Integration**
+   - Connects to Eliza runtime
+   - Accesses knowledge system
+   - Handles runtime state
+
+### Best Practices
+
+1. **Data Management**
+   - Always validate before storing
+   - Return copies of objects
+   - Handle missing data gracefully
+
+2. **Error Handling**
+   - Use specific error codes
+   - Include detailed messages
+   - Log important operations
+
+3. **Search Operations**
+   - Check runtime before search
+   - Convert filters properly
+   - Handle empty results
+
+4. **Performance**
+   - Keep properties small
+   - Use efficient iterations
+   - Cache when possible
+
+### Limitations
+
+1. **Memory Constraints**
+   - Limited by available RAM
+   - No persistence
+   - No transaction support
+
+2. **Search Limitations**
+   - Basic filter matching
+   - No complex indexing
+   - Limited sorting options
+
+3. **Scalability**
+   - Single instance only
+   - No distributed support
+   - No replication
+
+### Usage Examples
+
+```typescript
+// Initialize
+const storage = new MemoryPropertyStorage();
+await storage.initialize(runtime);
+
+// Add property
+const id = await storage.addProperty({
+    name: "Test Property",
+    description: "A test property"
+});
+
+// Search
+const results = await storage.searchByFilters({
+    operator: "AND",
+    filters: [
+        { field: "name", operator: "contains", value: "Test" }
+    ]
+});
+```
+
 The Map in [MemoryPropertyStorage](cci:1://file:///home/kai/eliza/eliza/packages/plugin-spreadsheet/src/storage/memory-storage.ts:8:0-172:1) provides these key operations:
 
 1. **Set**: `properties.set(id, property)`
