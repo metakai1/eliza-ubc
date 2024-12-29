@@ -88,7 +88,12 @@ const saveMemoryAction: Action = {
             }
 
             // Save the message content to the knowledge base
-            await knowledge.set(runtime, previousMessage.content.text);
+            await knowledge.set(runtime as AgentRuntime, {
+                id: stringToUuid(previousMessage.content.text),
+                content: {
+                    text: previousMessage.content.text
+                }
+            });
 
             await callback({
                 text: `I've stored this information in my knowledge base: "${previousMessage.content.text}"`,
@@ -146,42 +151,19 @@ const saveMemoryAction: Action = {
     ]
 };
 
-const simpleEvaluator: Evaluator = {
-    name: "LOG_SAVED_KNOWLEDGE",
-    description: "Logs when knowledge is saved to the database",
-
+export const saveMemoryEvaluator: Evaluator = {
+    name: "save-memory",
+    description: "Evaluates whether the user wants to save a memory",
+    similes: ["memory saver", "knowledge keeper"],
     validate: async (runtime: IAgentRuntime, message: Memory) => {
-        // Check if this is a save request
         const text = message.content?.text?.toLowerCase() || '';
-        return text === 'save_memory' || 
-               text.includes('save this') || 
-               text.includes('remember this');
+        return Promise.resolve(text === 'save_memory' ||
+               text.includes('save this') ||
+               text.includes('remember this'));
     },
-
     handler: async (runtime: IAgentRuntime, message: Memory) => {
         elizaLogger.info("********  Knowledge save requested: *******", message.content.text);
     },
-
-    get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
-        const text = message.content?.text?.toLowerCase() || '';
-        
-        // Only set shouldSave flag for explicit save commands
-        if (text === 'save_memory' || 
-            text.includes('save this') || 
-            text.includes('remember this')) {
-            return {
-                ...state,
-                shouldSave: true
-            };
-        }
-        
-        // For all other messages, ensure shouldSave is false
-        return {
-            ...state,
-            shouldSave: false
-        };
-    },
-
     examples: [
         {
             context: "When user requests to save knowledge",
@@ -189,13 +171,30 @@ const simpleEvaluator: Evaluator = {
                 {
                     user: "{{user1}}",
                     content: {
-                        text: "save this",
+                        text: "save this conversation"
                     }
                 }
             ],
-            outcome: "The save request is logged and shouldSave state is set to true"
+            outcome: "Memory should be saved"
         }
     ]
+};
+
+export const memoryStateProvider: Provider = {
+    get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        const text = message.content?.text?.toLowerCase() || '';
+
+        // Only set shouldSave flag for explicit save commands
+        if (text === 'save_memory' ||
+            text.includes('save this') ||
+            text.includes('remember this')) {
+            return {
+                ...state,
+                shouldSave: true
+            };
+        }
+        return state;
+    }
 };
 
 const simpleProvider: Provider = {
@@ -224,6 +223,6 @@ export const databaseLoaderPlugin: Plugin = {
     name: "database-loader",
     description: "Plugin for managing and utilizing persistent memory storage",
     actions: [saveMemoryAction],
-    evaluators: [simpleEvaluator],
-    providers: [simpleProvider]
+    evaluators: [saveMemoryEvaluator],
+    providers: [memoryStateProvider, simpleProvider]
 };
