@@ -154,7 +154,46 @@ sequenceDiagram
     Note over PSS,MPS: System ready for operations
 ```
 
-This diagram shows the initialization sequence from framework startup to ready state.
+## Abstract Class Structure
+```mermaid
+classDiagram
+    class PropertyStorage {
+        <<interface>>
+        +initialize(runtime)
+        +addProperty(property)
+        +getProperty(id)
+        +updateProperty(id, property)
+        +deleteProperty(id)
+        +searchByVector(vector, options)
+        +searchByFilters(filters)
+    }
+    
+    class BasePropertyStorage {
+        <<abstract>>
+        #runtime: AgentRuntime
+        +initialize(runtime)
+        +abstract addProperty(property)*
+        +abstract getProperty(id)*
+        +abstract updateProperty(id, property)*
+        +abstract deleteProperty(id)*
+        #validateProperty(property)
+    }
+    
+    class MemoryPropertyStorage {
+        -properties: Map
+        -nextId: number
+        +addProperty(property)
+        +getProperty(id)
+        +updateProperty(id, property)
+        +deleteProperty(id)
+    }
+    
+    PropertyStorage <|.. BasePropertyStorage : implements
+    BasePropertyStorage <|-- MemoryPropertyStorage : extends
+    
+    note for BasePropertyStorage "Provides common functionality\nand enforces contract"
+    note for MemoryPropertyStorage "Concrete implementation\nusing in-memory Map"
+```
 
 ## Error Handling Flow
 ```mermaid
@@ -180,6 +219,7 @@ These diagrams show different aspects of the property storage system:
 4. **Data Flow**: Demonstrates how data moves through the system during a search operation
 5. **Component Architecture**: Shows how the components fit into the larger system
 6. **Initialization Flow**: Shows the initialization sequence from framework startup to ready state
-7. **Error Handling Flow**: Illustrates how errors are handled throughout the system
+7. **Abstract Class Structure**: Shows the relationship between the interface, abstract class, and concrete implementation
+8. **Error Handling Flow**: Illustrates how errors are handled throughout the system
 
 Each diagram provides a different perspective on how the system works, making it easier to understand the overall architecture and individual component responsibilities.
