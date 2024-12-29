@@ -1,7 +1,7 @@
 import { PropertyData, SearchOptions, SearchResult, FilterGroup, MetadataFilter } from '../types';
 import { StorageError, StorageErrorCode } from '../errors';
 import { BasePropertyStorage } from '../storage';
-import { knowledge, elizaLogger, AgentRuntime, Memory } from '@ai16z/eliza';
+import { knowledge, elizaLogger, AgentRuntime, Memory, KnowledgeItem, stringToUuid } from '@ai16z/eliza';
 
 /**
  * In-memory implementation of PropertyStorage
@@ -76,6 +76,40 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
 
         elizaLogger.info('Searching properties with filters:', filters);
 
+        /* Test property creation - commented out for now
+        // Test item 1 - with metadata
+        const testItem1: KnowledgeItem = {
+            id: stringToUuid("test-property-1-" + Date.now()),
+            content: {
+                text: "Property: Test Tower Location: Miami Beach Type: Mixed-Use Size: 0.5 acres",
+                source: "property-data",
+                metadata: {
+                    name: "Test Tower",
+                    location: "Miami Beach",
+                    type: "Mixed-Use",
+                    size: "0.5 acres"
+                }
+            }
+        };
+
+        // Test item 2 - without metadata
+        const testItem2: KnowledgeItem = {
+            id: stringToUuid("test-property-2-" + Date.now()),
+            content: {
+                text: "Property: Another Tower Location: Miami Beach Type: Mixed-Use Size: 0.8 acres",
+                source: "property-data"
+            }
+        };
+
+        elizaLogger.info('Creating test item 1:', testItem1);
+        await knowledge.set(this.runtime, testItem1);
+        elizaLogger.info('Test item 1 created');
+
+        elizaLogger.info('Creating test item 2:', testItem2);
+        await knowledge.set(this.runtime, testItem2);
+        elizaLogger.info('Test item 2 created');
+        */
+
         // Create a memory object for knowledge search
         const memory: Memory = {
             agentId: this.runtime.agentId,
@@ -96,7 +130,7 @@ export class MemoryPropertyStorage extends BasePropertyStorage {
         // Convert knowledge items to property results
         const knowledgeResults = knowledgeItems.map(item => ({
             id: item.id,
-            property: item.content.metadata as PropertyData,
+            ...(item.content.metadata ? { property: item.content.metadata as PropertyData } : {}),
             similarity: 1.0,
             matchedFilters: []
         }));

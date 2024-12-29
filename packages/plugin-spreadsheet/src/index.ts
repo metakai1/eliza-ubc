@@ -93,7 +93,10 @@ const searchPropertiesAction: Action = {
             content: {
                 text: `Here are the properties matching "${query}":\n\n${
                     results.length > 0
-                        ? results.map(r => `- ${r.property.name}: ${r.property.description}`).join('\n')
+                        ? results.map(r => r.property
+                            ? `- ${r.property.name}: ${r.property.description}`
+                            : `- Unknown property`
+                          ).join('\n')
                         : 'No matching properties found.'
                 }`,
                 action: 'search-properties'

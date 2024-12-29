@@ -57,7 +57,8 @@ export interface SearchOptions {
  * Search result with similarity score
  */
 export interface SearchResult {
-    property: PropertyData;
+    id: string;
+    property?: PropertyData;
     similarity: number;
     matchedFilters?: string[];
 }
