@@ -45,6 +45,12 @@ const saveMemoryAction: Action = {
         callback: HandlerCallback
     ) => {
         try {
+            // Only proceed if explicitly requested via state
+            if (!state?.shouldSave) {
+                elizaLogger.info("Save operation was not explicitly requested");
+                return;
+            }
+
             // Get recent messages
             const recentMessages = await runtime.messageManager.getMemories({
                 roomId: message.roomId,
@@ -77,40 +83,21 @@ const saveMemoryAction: Action = {
             if (!previousMessage) {
                 await callback({
                     text: "I couldn't find any recent messages to save.",
-                    action: "SAVE_MEMORY"
                 });
                 return;
             }
 
-            // Create a knowledge item from the previous message
-            const documentId = stringToUuid(previousMessage.content.text);
-            const knowledgeItem: KnowledgeItem = {
-                id: documentId,
-                content: {
-                    text: previousMessage.content.text,
-                    source: "user-input",
-                    timestamp: Date.now(),
-                }
-            };
+            // Save the message content to the knowledge base
+            await knowledge.set(runtime, previousMessage.content.text);
 
-            // Store using knowledge.set
-            await knowledge.set(runtime as AgentRuntime, knowledgeItem);
-
-            // Log success
-            elizaLogger.log("Successfully saved knowledge:", {
-                id: documentId,
-                text: previousMessage.content.text
-            });
-
-            // Provide confirmation to user
             await callback({
                 text: `I've stored this information in my knowledge base: "${previousMessage.content.text}"`,
-                action: "SAVE_MEMORY"
             });
-
         } catch (error) {
-            elizaLogger.error("Failed to store knowledge:", error);
-            throw new Error(`Failed to store knowledge: ${error.message}`);
+            elizaLogger.error("Error in saveMemoryAction:", error);
+            await callback({
+                text: "Sorry, I encountered an error while trying to save that information.",
+            });
         }
     },
     examples: [
@@ -161,31 +148,52 @@ const saveMemoryAction: Action = {
 
 const simpleEvaluator: Evaluator = {
     name: "LOG_SAVED_KNOWLEDGE",
-    similes: ["LOG_KNOWLEDGE"],
-    description: "Logs whenever knowledge is saved",
+    description: "Logs when knowledge is saved to the database",
 
     validate: async (runtime: IAgentRuntime, message: Memory) => {
-        // Only run when something was just saved to knowledge
-        return message.content?.action === "SAVE_MEMORY";
+        // Check if this is a save request
+        const text = message.content?.text?.toLowerCase() || '';
+        return text === 'save_memory' || 
+               text.includes('save this') || 
+               text.includes('remember this');
     },
 
     handler: async (runtime: IAgentRuntime, message: Memory) => {
-        elizaLogger.info("********  Knowledge was saved: *******", message.content.text);
+        elizaLogger.info("********  Knowledge save requested: *******", message.content.text);
+    },
+
+    get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        const text = message.content?.text?.toLowerCase() || '';
+        
+        // Only set shouldSave flag for explicit save commands
+        if (text === 'save_memory' || 
+            text.includes('save this') || 
+            text.includes('remember this')) {
+            return {
+                ...state,
+                shouldSave: true
+            };
+        }
+        
+        // For all other messages, ensure shouldSave is false
+        return {
+            ...state,
+            shouldSave: false
+        };
     },
 
     examples: [
         {
-            context: "After saving some knowledge",
+            context: "When user requests to save knowledge",
             messages: [
                 {
-                    user: "{{user2}}",
+                    user: "{{user1}}",
                     content: {
-                        text: "I've stored this information in my knowledge base: \"The sky is blue\"",
-                        action: "SAVE_MEMORY"
+                        text: "save this",
                     }
                 }
             ],
-            outcome: "The saving event is logged"
+            outcome: "The save request is logged and shouldSave state is set to true"
         }
     ]
 };
