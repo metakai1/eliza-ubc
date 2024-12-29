@@ -8,7 +8,7 @@ console.log('Using OpenAI embeddings explicitly.');
 process.env.USE_OPENAI_EMBEDDING = 'true';
 process.env.USE_OLLAMA_EMBEDDING = 'false';
 process.env.EMBEDDING_OPENAI_MODEL = 'text-embedding-3-small';
-const roomId = 'aa0d6f50-b80b-0dfa-811b-1f8750ee6278';
+const roomId = '1459b245-2171-02f6-b436-c3c2641848e5';
 
 async function clearMemories() {
    const db = new PostgresDatabaseAdapter({

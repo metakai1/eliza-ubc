@@ -17,7 +17,7 @@ async function main() {
 
     // Save a test memory
     await runtime.triggerAction("save-memory", {
-        userId: "aa0d6f50-b80b-0dfa-811b-1f8750ee6278",
+        userId: "1459b245-2171-02f6-b436-c3c2641848e5",
         agentId: runtime.agentId,
         roomId: runtime.agentId,
         content: {

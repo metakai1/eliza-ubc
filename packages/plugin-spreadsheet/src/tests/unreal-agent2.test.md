@@ -16,7 +16,7 @@ describe('UnrealAgent2 Infrastructure', () => {
     let runtime: AgentRuntime;
     let db: PostgresDatabaseAdapter;
     let agent: UnrealAgent2;
-    const agentId = 'aa0d6f50-b80b-0dfa-811b-1f8750ee6278';
+    const agentId = '1459b245-2171-02f6-b436-c3c2641848e5';
 
     beforeAll(async () => {
         // Initialize database
@@ -83,10 +83,10 @@ describe('UnrealAgent2 Infrastructure', () => {
             // Test changing embedding model
             const originalModel = process.env.EMBEDDING_OPENAI_MODEL;
             process.env.EMBEDDING_OPENAI_MODEL = 'text-embedding-3-large';
-            
+
             // Reinitialize agent
             await agent.initialize();
-            
+
             // Verify agent adapted to new config
             const newConfig = await agent.getConfig();
             expect(newConfig.embeddingModel).toBe('text-embedding-3-large');
@@ -136,7 +136,7 @@ describe('UnrealAgent2 Infrastructure', () => {
         it('should maintain property metadata', async () => {
             const stored = await agent.storeProperty(testProperty);
             const retrieved = await agent.getProperty(stored.id);
-            
+
             expect(retrieved).toBeDefined();
             expect(retrieved.name).toBe(testProperty.name);
             expect(retrieved.market.currentPrice).toBe(testProperty.market.currentPrice);
@@ -148,7 +148,7 @@ describe('UnrealAgent2 Infrastructure', () => {
         it('should handle data versioning', async () => {
             // Store initial version
             const v1 = await agent.storeProperty(testProperty);
-            
+
             // Update property
             const updatedProperty = {
                 ...testProperty,
@@ -157,13 +157,13 @@ describe('UnrealAgent2 Infrastructure', () => {
                     currentPrice: 27000000
                 }
             };
-            
+
             const v2 = await agent.storeProperty(updatedProperty);
-            
+
             // Verify versioning
             expect(v2.metadata.version).toBe(2);
             expect(v2.metadata.previousVersion).toBe(v1.id);
-            
+
             // Get version history
             const history = await agent.getPropertyHistory(v2.id);
             expect(history.length).toBe(2);
