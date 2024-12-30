@@ -22,6 +22,69 @@ if (!USER_ID) {
     throw new Error("USER_ID must be set in environment variables");
 }
 
+// Add debug utility
+const safeStringify = (obj: any): string => {
+    const seen = new WeakSet();
+    return JSON.stringify(obj, (key, value) => {
+        if (typeof value === 'object' && value !== null) {
+            if (seen.has(value)) {
+                return '[Circular]';
+            }
+            seen.add(value);
+        }
+        return value;
+    }, 2);
+};
+
+const getStateSummary = (state: any) => {
+    if (!state) return { hasState: false };
+
+    const summary: any = {
+        hasState: true,
+        stateKeys: Object.keys(state),
+    };
+
+    // Safely add known primitive values
+    if (typeof state.shouldSave !== 'undefined') {
+        summary.shouldSave = state.shouldSave;
+    }
+    if (typeof state.userId !== 'undefined') {
+        summary.userId = state.userId;
+    }
+    if (typeof state.roomId !== 'undefined') {
+        summary.roomId = state.roomId;
+    }
+    if (typeof state.messageDirection !== 'undefined') {
+        summary.messageDirection = state.messageDirection;
+    }
+
+    return summary;
+};
+
+const logState = (component: string, stage: string, state: any) => {
+    try {
+        const stateSummary = getStateSummary(state);
+        elizaLogger.info(`[${component}] ${stage} - State:`, stateSummary);
+    } catch (error) {
+        elizaLogger.error(`[${component}] ${stage} - Error logging state:`, error);
+    }
+};
+
+const logMessage = (component: string, stage: string, message: Memory) => {
+    try {
+        const messageSummary = {
+            text: message.content?.text,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            hasContent: !!message.content
+        };
+        elizaLogger.info(`[${component}] ${stage} - Message:`, messageSummary);
+    } catch (error) {
+        elizaLogger.error(`[${component}] ${stage} - Error logging message:`, error);
+    }
+};
+
 const saveMemoryAction: Action = {
     name: "SAVE_MEMORY",
     similes: [
@@ -34,7 +97,30 @@ const saveMemoryAction: Action = {
     description: "Stores important information in the agent's long-term knowledge base",
 
     validate: async (runtime: IAgentRuntime, message: Memory) => {
-        return !!message.content?.text && message.content.text.length > 0;
+        logMessage('Action', 'validate.start', message);
+
+        // Check if message exists
+        if (!message) {
+            elizaLogger.info('[Action] validate.fail - No message provided');
+            return Promise.resolve(false);
+        }
+
+        // Check if content exists
+        if (!message.content) {
+            elizaLogger.info('[Action] validate.fail - No content in message');
+            return Promise.resolve(false);
+        }
+
+        // Check if text exists and is non-empty
+        const hasValidText = !!message.content.text && message.content.text.length > 0;
+
+        elizaLogger.info('[Action] validate.result:', {
+            hasValidText,
+            textLength: message.content.text?.length || 0,
+            text: message.content.text || ''
+        });
+
+        return Promise.resolve(hasValidText);
     },
 
     handler: async (
@@ -45,20 +131,27 @@ const saveMemoryAction: Action = {
         callback: HandlerCallback
     ) => {
         try {
-            elizaLogger.info("saveMemoryAction: Received message:", message.content.text);
-            elizaLogger.info("saveMemoryAction: Current state:", state);
+            logMessage('Action', 'handler.start', message);
+            logState('Action', 'handler.initialState', state);
 
             // Only proceed if explicitly requested via state
             if (!state?.shouldSave) {
-                elizaLogger.info("Save operation was not explicitly requested");
+                elizaLogger.info('[Action] handler.abort - Save not requested in state');
                 return;
             }
 
             // Get recent messages
             const recentMessages = await runtime.messageManager.getMemories({
                 roomId: message.roomId,
-                count: 5,  // Look at last 5 messages
+                count: 5,
                 unique: false
+            });
+            elizaLogger.info('[Action] handler.recentMessages:', {
+                count: recentMessages.length,
+                messages: recentMessages.map(m => ({
+                    text: m.content.text,
+                    user: m.content.user
+                }))
             });
 
             // Extract only the text content from the memories
@@ -84,11 +177,16 @@ const saveMemoryAction: Action = {
             elizaLogger.info("saveMemoryAction: Previous message:", previousMessage?.content.text);
 
             if (!previousMessage) {
+                elizaLogger.info('[Action] handler.abort - No previous message found');
                 await callback({
                     text: "I couldn't find any recent messages to save.",
                 });
                 return;
             }
+
+            elizaLogger.info('[Action] handler.saving:', {
+                messageText: previousMessage.content.text
+            });
 
             // Save the message content to the knowledge base
             await knowledge.set(runtime as AgentRuntime, {
@@ -98,11 +196,13 @@ const saveMemoryAction: Action = {
                 }
             });
 
+            logState('Action', 'handler.complete', state);
+
             await callback({
                 text: `I've stored this information in my knowledge base: "${previousMessage.content.text}"`,
             });
         } catch (error) {
-            elizaLogger.error("Error in saveMemoryAction:", error);
+            elizaLogger.error('[Action] handler.error:', error);
             await callback({
                 text: "Sorry, I encountered an error while trying to save that information.",
             });
@@ -159,14 +259,24 @@ export const saveMemoryEvaluator: Evaluator = {
     description: "Evaluates whether the user wants to save a memory",
     similes: ["memory saver", "knowledge keeper"],
     validate: async (runtime: IAgentRuntime, message: Memory) => {
-        elizaLogger.info("saveMemoryEvaluator: Validating message:", message.content.text);
+        logMessage('Evaluator', 'validate.start', message);
         const text = message.content?.text?.toLowerCase() || '';
-        return Promise.resolve(text === 'save_memory' ||
+
+        // Check for explicit save commands
+        const result = text === 'save_memory' ||
                text.includes('save this') ||
-               text.includes('remember this'));
+               text.includes('remember this') ||
+               text.includes('save_memory');  // Add uppercase variant
+
+        elizaLogger.info('[Evaluator] validate.result:', {
+            result,
+            matchedText: text
+        });
+        return Promise.resolve(result);
     },
     handler: async (runtime: IAgentRuntime, message: Memory) => {
-        elizaLogger.info("saveMemoryEvaluator: handler: Knowledge save evaluated: *******", message.content.text);
+        logMessage('Evaluator', 'handler.start', message);
+        elizaLogger.info('[Evaluator] handler.complete - Knowledge save evaluated');
     },
     examples: [
         {
@@ -186,25 +296,28 @@ export const saveMemoryEvaluator: Evaluator = {
 
 export const memoryStateProvider: Provider = {
     get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
-        const text = message.content?.text?.toLowerCase() || '';
-        // Log provider information
-        elizaLogger.info("memoryStateProvider: get: Received message:", {
-            text,
-            roomId: message.roomId,
-            userId: message.userId,
-            direction: state?.messageDirection
-        });
-        //elizaLogger.info("memoryStateProvider: get: Current state:", state?);
+        logMessage('Provider', 'get.start', message);
+        logState('Provider', 'get.initialState', state);
 
-        // Only set shouldSave flag for explicit save commands
+        const text = message.content?.text?.toLowerCase() || '';
+
+        // Check for explicit save commands including uppercase
         if (text === 'save_memory' ||
             text.includes('save this') ||
-            text.includes('remember this')) {
-            return {
+            text.includes('remember this') ||
+            message.content?.text?.includes('SAVE_MEMORY')) {
+
+            const newState = {
                 ...(state || {}),
-                shouldSave: true
+                shouldSave: true,
+                messageToSave: message  // Store the message to be saved
             };
+
+            logState('Provider', 'get.newState', newState);
+            return newState;
         }
+
+        logState('Provider', 'get.unchangedState', state);
         return state;
     }
 };
