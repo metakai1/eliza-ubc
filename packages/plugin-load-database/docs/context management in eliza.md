@@ -557,94 +557,71 @@ async handler(runtime: IAgentRuntime, message: Memory, state: State) {
 
 So when you access `state.actorsData` in an action or provider, you're not scanning the context string - you're accessing structured data that was already loaded by the runtime during state composition.
 
-### Q: How do evaluators affect the agent's behavior and future context?
-A: Evaluators serve as quality control for the agent's responses. While they don't directly modify the immediate context, they can affect the agent's behavior in several ways:
+### Q: Do evaluators contribute directly to the context?
+A: No, evaluators don't directly contribute to the immediate context that's sent to the LLM. Instead, they influence context and responses in three indirect ways:
 
-1. **Response Rejection**:
+1. **Response Validation**:
 ```typescript
 const consistencyEvaluator: Evaluator = {
-    name: "contextConsistency",
-    handler: async (runtime, message, state) => {
-        // Check if response contradicts previous context
-        const isConsistent = checkConsistency(
-            message.content,
-            state.recentMessages
-        );
-        
-        return {
-            pass: isConsistent,
-            reason: isConsistent 
-                ? "Response aligns with context"
-                : "Response contradicts previous statements"
-        };
+    validate: async (runtime, message, state) => {
+        // Validate after response is generated
+        const isValid = validateResponse(message.content);
+        if (!isValid) {
+            // Triggers regeneration with same context
+            return {
+                pass: false,
+                reason: "Response invalid"
+            };
+        }
+        return { pass: true };
     }
 };
 ```
 
-2. **Indirect Context Influence**:
-   - Failed evaluations can trigger response regeneration
-   - New response gets fresh context
-   - Evaluation results may be stored in memory
-   - Future providers can access evaluation history
-
-3. **Learning Opportunities**:
+2. **Memory Storage**:
 ```typescript
-const learningEvaluator: Evaluator = {
-    name: "learningEvaluator",
-    handler: async (runtime, message, state) => {
-        // Store evaluation result for future context
+const evaluator: Evaluator = {
+    validate: async (runtime, message, state) => {
+        // Store evaluation result as memory
         await runtime.messageManager.saveMemory({
-            type: "evaluation",
+            type: "evaluation_result",
             content: {
-                evaluation: "consistency",
-                result: "failed",
-                reason: "Contradicted user preference"
+                type: "contradiction",
+                details: "Contradicted previous statement about user preference"
             }
         });
-        
-        // This can be used by providers in future interactions
-        return {
-            pass: false,
-            reason: "Response needs improvement"
-        };
+        return { pass: false };
     }
 };
 ```
 
-4. **Context Chain**:
-```mermaid
-graph TD
-    R[Response] --> E[Evaluator]
-    E -->|Pass| S[Save Response]
-    E -->|Fail| N[New Response]
-    N --> P[New Provider Context]
-    S --> F[Future Context]
-```
-
-5. **Example Provider Using Evaluation History**:
+3. **Provider Access**:
 ```typescript
-class ResponseQualityProvider implements Provider {
+class EvaluationAwareProvider implements Provider {
     async get(runtime: IAgentRuntime, message: Memory, state: State) {
-        // Get recent evaluation history
+        // Provider reads past evaluation results
         const recentEvals = await runtime.messageManager.getMemories({
-            type: "evaluation",
+            type: "evaluation_result",
             count: 5
         });
         
-        // Use it to guide response
+        // Uses them to guide context
         return `
-        RESPONSE_QUALITY_GUIDANCE:
-        ${recentEvals.map(e => `- Avoid: ${e.content.reason}`).join('\n')}
+        RESPONSE_GUIDANCE:
+        Previous responses had these issues:
+        ${recentEvals.map(e => `- ${e.content.details}`).join('\n')}
+        Ensure response avoids these issues.
         `;
     }
 }
 ```
 
-So while evaluators don't directly modify the current context, they create a feedback loop that influences:
-1. Whether the current response is accepted
-2. What context is available for future interactions
-3. How providers shape future responses
-4. The agent's learning and adaptation over time
+So while evaluators don't modify the immediate context, they create a feedback loop by:
+1. Storing evaluation results that future providers can use
+2. Forcing response regeneration when validation fails
+3. Influencing how future contexts are built through provider access to evaluation history
+
+Think of evaluators as quality control that shapes future behavior rather than immediate context contributors.
 
 _Note: This FAQ will be updated with new Q&As from our ongoing discussions._
 
