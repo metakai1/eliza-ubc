@@ -209,6 +209,213 @@ const robustProvider: Provider = {
    - Heavy operations should be cached
    - Resources should be released properly
 
+## Context Management
+
+### Provider's Role in Context Generation
+
+Providers are a crucial part of Eliza's context management system, enriching the conversation with dynamic, contextual information. They serve as a bridge between the agent's knowledge base and the ongoing conversation.
+
+```mermaid
+graph TD
+    M[Message] --> R[Runtime]
+    R --> P1[Provider 1]
+    R --> P2[Provider 2]
+    R --> P3[Provider 3]
+    P1 --> C[Context]
+    P2 --> C
+    P3 --> C
+    C --> LLM[Language Model]
+```
+
+### Context Flow
+
+1. **Context Generation**
+   ```typescript
+   // Provider implementation
+   get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+       // Access runtime services
+       const db = runtime.databaseAdapter;
+       
+       // Generate context based on message
+       const relevantData = await db.query(...);
+       
+       // Return context string
+       return `Relevant context: ${relevantData}`;
+   }
+   ```
+
+2. **Context Aggregation**
+   ```typescript
+   // In runtime
+   const context = await getProviders(runtime, message, state);
+   // context = "Provider1Context\nProvider2Context\nProvider3Context"
+   ```
+
+### Available Context Data
+
+1. **Runtime Context**
+   - Database access via `runtime.databaseAdapter`
+   - Memory management via `runtime.messageManager`
+   - Service access via `runtime.getService()`
+   - Cache access via `runtime.cacheManager`
+
+2. **Message Context**
+   ```typescript
+   interface Memory {
+       id: UUID;           // Message ID
+       content: Content;   // Message content
+       roomId: UUID;       // Conversation room
+       userId?: UUID;      // Sender ID
+       timestamp: Date;    // Creation time
+       metadata?: any;     // Additional data
+   }
+   ```
+
+3. **State Context**
+   ```typescript
+   interface State {
+       userId?: UUID;
+       agentId?: UUID;
+       roomId: UUID;
+       bio: string;
+       lore: string;
+       actors: string;
+       actorsData?: Actor[];
+       goals?: string;
+       goalsData?: Goal[];
+       recentMessages: string;
+       recentMessagesData: Memory[];
+   }
+   ```
+
+### Context Best Practices
+
+1. **Efficient Context Generation**
+   ```typescript
+   const provider: Provider = {
+       get: async (runtime, message, state) => {
+           // 1. Cache expensive operations
+           const cacheKey = `context_${message.id}`;
+           const cached = await runtime.cacheManager.get(cacheKey);
+           if (cached) return cached;
+
+           // 2. Generate minimal relevant context
+           const context = await generateContext(message);
+
+           // 3. Cache for reuse
+           await runtime.cacheManager.set(cacheKey, context);
+           return context;
+       }
+   };
+   ```
+
+2. **Context Formatting**
+   - Keep context concise and relevant
+   - Use clear section headers
+   - Format data consistently
+   ```typescript
+   return `
+   RELEVANT_KNOWLEDGE:
+   ${knowledge}
+
+   USER_PREFERENCES:
+   ${preferences}
+
+   CONVERSATION_HISTORY:
+   ${history}
+   `;
+   ```
+
+3. **Context Priority**
+   - Return `null` or empty string for irrelevant contexts
+   - Order context by importance (most important first)
+   - Limit context length based on token limits
+
+4. **Error Handling**
+   ```typescript
+   get: async (runtime, message, state) => {
+       try {
+           const context = await generateContext(message);
+           return context;
+       } catch (error) {
+           // Log error but don't fail
+           console.error('Context generation failed:', error);
+           return null;
+       }
+   }
+   ```
+
+### Advanced Context Features
+
+1. **Dynamic Context Loading**
+   ```typescript
+   get: async (runtime, message, state) => {
+       // Load context based on message content
+       if (message.content.includes('weather')) {
+           return await getWeatherContext(message);
+       }
+       if (message.content.includes('schedule')) {
+           return await getScheduleContext(message);
+       }
+       return null;
+   }
+   ```
+
+2. **Context Chaining**
+   ```typescript
+   get: async (runtime, message, state) => {
+       // Build context chain
+       const baseContext = await getBaseContext(message);
+       const enhancedContext = await enhanceContext(baseContext);
+       const finalContext = await formatContext(enhancedContext);
+       return finalContext;
+   }
+   ```
+
+3. **Stateful Context**
+   ```typescript
+   get: async (runtime, message, state) => {
+       if (!state) return null;
+       
+       // Update state
+       state.contextVersion = (state.contextVersion || 0) + 1;
+       
+       // Return both context and state
+       return `Context Version: ${state.contextVersion}`;
+   }
+   ```
+
+### Context Debugging
+
+1. **Context Inspection**
+   ```typescript
+   get: async (runtime, message, state) => {
+       const context = await generateContext(message);
+       
+       // Log context for debugging
+       console.log('Generated context:', {
+           length: context.length,
+           sections: context.split('\n\n').length,
+           preview: context.slice(0, 100)
+       });
+       
+       return context;
+   }
+   ```
+
+2. **Context Validation**
+   ```typescript
+   function validateContext(context: string): boolean {
+       // Check context format
+       if (!context.includes('RELEVANT_KNOWLEDGE:')) return false;
+       
+       // Check context length
+       if (context.length > MAX_CONTEXT_LENGTH) return false;
+       
+       return true;
+   }
+   ```
+
 ## State Management Deep Dive
 
 ### State Flow in Runtime
