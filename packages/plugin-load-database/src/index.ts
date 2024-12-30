@@ -32,6 +32,9 @@ const safeStringify = (obj: any): string => {
             }
             seen.add(value);
         }
+        if (typeof value === 'bigint') {
+            return value.toString();
+        }
         return value;
     }, 2);
 };
@@ -64,7 +67,7 @@ const getStateSummary = (state: any) => {
 const logState = (component: string, stage: string, state: any) => {
     try {
         const stateSummary = getStateSummary(state);
-        elizaLogger.info(`[${component}] ${stage} - State:`, stateSummary);
+        elizaLogger.info(`[${component}] ${stage} - State:`, JSON.parse(safeStringify(stateSummary)));
     } catch (error) {
         elizaLogger.error(`[${component}] ${stage} - Error logging state:`, error);
     }
@@ -85,18 +88,140 @@ const logMessage = (component: string, stage: string, message: Memory) => {
     }
 };
 
-const saveMemoryAction: Action = {
+// State tracking utilities
+interface StateTransition {
+    component: string;
+    stage: string;
+    fromState: any;
+    toState: any;
+    timestamp: number;
+}
+
+const stateTransitions: StateTransition[] = [];
+
+const trackStateTransition = (component: string, stage: string, fromState: any, toState: any) => {
+    const transition: StateTransition = {
+        component,
+        stage,
+        fromState: getStateSummary(fromState),
+        toState: getStateSummary(toState),
+        timestamp: Date.now()
+    };
+    stateTransitions.push(transition);
+    elizaLogger.info(`[StateTransition] ${component}.${stage}`, JSON.parse(safeStringify(transition)));
+};
+
+// Enhanced state validation
+const validateState = (component: string, state: any): boolean => {
+    if (!state) {
+        elizaLogger.error(`[${component}] State validation failed: No state object`);
+        return false;
+    }
+
+    // Required keys for all states
+    const requiredKeys = ['roomId'];
+    const missingKeys = requiredKeys.filter(key => !state.hasOwnProperty(key));
+
+    // Additional validation for save memory states
+    if (state.shouldSave) {
+        const saveRequiredKeys = ['messageToSave', 'commandContext'];
+        const missingSaveKeys = saveRequiredKeys.filter(key => !state.hasOwnProperty(key));
+        if (missingSaveKeys.length > 0) {
+            elizaLogger.error(`[${component}] Save state validation failed: Missing required save keys`, { missingSaveKeys });
+            return false;
+        }
+    }
+
+    if (missingKeys.length > 0) {
+        elizaLogger.error(`[${component}] State validation failed: Missing required keys`, { missingKeys });
+        return false;
+    }
+
+    return true;
+};
+
+// Enhanced command detection
+const isSaveMemoryCommand = (message: Memory): boolean => {
+    if (!message?.content?.text) return false;
+
+    const text = message.content.text.toLowerCase();
+    const explicitCommands = [
+        'save_memory',
+        'save this',
+        'remember this',
+        'SAVE_MEMORY'
+    ];
+
+    // Check for exact matches
+    const isExplicitCommand = explicitCommands.some(cmd =>
+        text.includes(cmd.toLowerCase()) ||
+        message.content?.text?.includes(cmd)
+    );
+
+    // Check for command context
+    const hasCommandContext = message.content?.commandContext &&
+        typeof message.content.commandContext === 'object' &&
+        'command' in message.content.commandContext &&
+        message.content.commandContext.command === 'SAVE_MEMORY';
+
+    elizaLogger.info('[CommandDetection] Save memory command check:', {
+        text,
+        isExplicitCommand,
+        hasCommandContext,
+        result: isExplicitCommand || hasCommandContext
+    });
+
+    return isExplicitCommand || hasCommandContext;
+};
+
+const getMessageSummary = (message: Memory) => ({
+    text: message.content?.text,
+    userId: message.userId,
+    roomId: message.roomId,
+    messageId: message.id,
+    commandContext: message.content?.commandContext,
+    hasContent: !!message.content
+});
+
+// Runtime context tracking
+interface RuntimeContext {
+    component: string;
+    stage: string;
+    runtimeKeys: string[];
+    timestamp: number;
+}
+
+const runtimeContexts: RuntimeContext[] = [];
+
+const trackRuntime = (component: string, stage: string, runtime: IAgentRuntime) => {
+    try {
+        const context: RuntimeContext = {
+            component,
+            stage,
+            runtimeKeys: Object.keys(runtime),
+            timestamp: Date.now()
+        };
+        runtimeContexts.push(context);
+        elizaLogger.info(`[RuntimeContext] ${component}.${stage}`, context);
+    } catch (error) {
+        elizaLogger.error(`[RuntimeContext] Error tracking runtime:`, error);
+    }
+};
+
+export const saveMemoryAction: Action = {
     name: "SAVE_MEMORY",
     similes: [
         "REMEMBER_THIS",
-        "STORE_THIS",
-        "MEMORIZE_THIS",
         "SAVE_THIS",
-        "KEEP_THIS"
+        "REMEMBER",
+        "SAVE",
+        "STORE_THIS",
+        "STORE"
     ],
     description: "Stores important information in the agent's long-term knowledge base",
 
     validate: async (runtime: IAgentRuntime, message: Memory) => {
+        trackRuntime('Action', 'validate.start', runtime);
         logMessage('Action', 'validate.start', message);
 
         // Check if message exists
@@ -130,82 +255,62 @@ const saveMemoryAction: Action = {
         options: any,
         callback: HandlerCallback
     ) => {
+        logMessage("Action", "handler.start", message);
+        logState("Action", "handler.initialState", state);
+
+        // Get the latest state from transitions
+        const latestState = state.stateTransitions?.length > 0 
+            ? state.stateTransitions[state.stateTransitions.length - 1] 
+            : state;
+
+        logState("Action", "handler.latestState", latestState);
+
+        if (!latestState.shouldSave) {
+            elizaLogger.info("[Action] handler.complete - No save requested");
+            return state;
+        }
+
+        const messageToSave = latestState.messageToSave || message;
+        elizaLogger.info("[Action] handler.save - Saving message:", messageToSave);
+
         try {
-            logMessage('Action', 'handler.start', message);
-            logState('Action', 'handler.initialState', state);
+            const savedContent = {
+                text: messageToSave.content?.text || "",
+                attachments: messageToSave.content?.attachments || [],
+                source: messageToSave.content?.source || "unknown",
+                url: messageToSave.content?.url || "",
+                inReplyTo: messageToSave.content?.inReplyTo || null
+            };
 
-            // Only proceed if explicitly requested via state
-            if (!state?.shouldSave) {
-                elizaLogger.info('[Action] handler.abort - Save not requested in state');
-                return;
-            }
+            const memoryToSave = {
+                id: messageToSave.id,
+                content: savedContent,
+                userId: messageToSave.userId,
+                agentId: runtime.agentId,
+                roomId: messageToSave.roomId,
+                createdAt: messageToSave.createdAt || Date.now(),
+                embedding: messageToSave.embedding
+            };
 
-            // Get recent messages
-            const recentMessages = await runtime.messageManager.getMemories({
-                roomId: message.roomId,
-                count: 5,
-                unique: false
-            });
-            elizaLogger.info('[Action] handler.recentMessages:', {
-                count: recentMessages.length,
-                messages: recentMessages.map(m => ({
-                    text: m.content.text,
-                    user: m.content.user
-                }))
-            });
+            await runtime.knowledgeManager.createMemory(memoryToSave, true);
+            elizaLogger.info("[Action] handler.complete - Memory saved");
 
-            // Extract only the text content from the memories
-            const messageTexts = recentMessages.map(memory => memory.content.text);
-
-            elizaLogger.info("saveMemoryAction: Recent messages:", messageTexts);
-
-            // Get the previous message (excluding commands and responses to commands)
-            const previousMessage = recentMessages
-                .filter(msg => {
-                    const content = msg.content;
-                    // Look for bot's responses (ATLAS)
-                    return content.user === "ATLAS" &&
-                           // Must be a reply to something
-                           content.inReplyTo &&
-                           // Exclude save confirmations
-                           !content.text.toLowerCase().includes("i've stored") &&
-                           !content.text.toLowerCase().includes("in my knowledge base");
-                })
-                // Sort by timestamp to get the most recent first
-                .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
-
-            elizaLogger.info("saveMemoryAction: Previous message:", previousMessage?.content.text);
-
-            if (!previousMessage) {
-                elizaLogger.info('[Action] handler.abort - No previous message found');
-                await callback({
-                    text: "I couldn't find any recent messages to save.",
-                });
-                return;
-            }
-
-            elizaLogger.info('[Action] handler.saving:', {
-                messageText: previousMessage.content.text
-            });
-
-            // Save the message content to the knowledge base
-            await knowledge.set(runtime as AgentRuntime, {
-                id: stringToUuid(previousMessage.content.text),
-                content: {
-                    text: previousMessage.content.text
-                }
-            });
-
-            logState('Action', 'handler.complete', state);
-
-            await callback({
-                text: `I've stored this information in my knowledge base: "${previousMessage.content.text}"`,
-            });
+            // Return updated state with saved memory
+            return {
+                ...state,
+                lastSavedMemory: memoryToSave,
+                stateTransitions: [
+                    ...(state.stateTransitions || []),
+                    {
+                        ...latestState,
+                        shouldSave: false,
+                        messageToSave: null
+                    }
+                ]
+            };
         } catch (error) {
-            elizaLogger.error('[Action] handler.error:', error);
-            await callback({
-                text: "Sorry, I encountered an error while trying to save that information.",
-            });
+            elizaLogger.error("[Action] handler.error:", error);
+            throw error;
         }
     },
     examples: [
@@ -259,24 +364,51 @@ export const saveMemoryEvaluator: Evaluator = {
     description: "Evaluates whether the user wants to save a memory",
     similes: ["memory saver", "knowledge keeper"],
     validate: async (runtime: IAgentRuntime, message: Memory) => {
+        trackRuntime('Evaluator', 'validate.start', runtime);
         logMessage('Evaluator', 'validate.start', message);
-        const text = message.content?.text?.toLowerCase() || '';
 
-        // Check for explicit save commands
-        const result = text === 'save_memory' ||
-               text.includes('save this') ||
-               text.includes('remember this') ||
-               text.includes('save_memory');  // Add uppercase variant
+        const result = isSaveMemoryCommand(message);
 
         elizaLogger.info('[Evaluator] validate.result:', {
             result,
-            matchedText: text
+            message: getMessageSummary(message)
         });
         return Promise.resolve(result);
     },
-    handler: async (runtime: IAgentRuntime, message: Memory) => {
+    handler: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        trackRuntime('Evaluator', 'handler.start', runtime);
         logMessage('Evaluator', 'handler.start', message);
+
+        // Get the previous message to save
+        const recentMessages = await runtime.messageManager.getMemories({
+            roomId: message.roomId,
+            count: 5,
+            unique: false
+        });
+
+        const previousMessage = recentMessages.find((memory, index) => {
+            const text = (memory.content.text || '').toLowerCase();
+            return !text.includes('save_memory') &&
+                   !text.includes('save this') &&
+                   !text.includes('remember this');
+        });
+
+        if (!previousMessage) {
+            elizaLogger.info('[Evaluator] handler.abort - No previous message found');
+            return;
+        }
+
+        // Update state with the message to save
+        const newState = {
+            ...state,
+            shouldSave: true,
+            messageToSave: previousMessage
+        };
+
+        trackStateTransition('Evaluator', 'handler.complete', state, newState);
         elizaLogger.info('[Evaluator] handler.complete - Knowledge save evaluated');
+
+        return newState;
     },
     examples: [
         {
@@ -296,25 +428,67 @@ export const saveMemoryEvaluator: Evaluator = {
 
 export const memoryStateProvider: Provider = {
     get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        trackRuntime('Provider', 'get.start', runtime);
         logMessage('Provider', 'get.start', message);
         logState('Provider', 'get.initialState', state);
 
-        const text = message.content?.text?.toLowerCase() || '';
+        const isValid = validateState('Provider', state);
+        if (!isValid) {
+            elizaLogger.error('[Provider] Invalid state, creating new state');
+            state = {
+                roomId: message.roomId,
+                bio: '',
+                lore: '',
+                messageDirections: '',
+                postDirections: '',
+                recentMessages: '',
+                recentMessagesData: [],
+                actors: '',
+                actorsData: [],
+                agentId: runtime.agentId,
+                agentName: '',
+                senderName: '',
+                knowledge: '',
+                knowledgeData: [],
+                recentMessageInteractions: '',
+                recentPostInteractions: '',
+                recentInteractionsData: [],
+                topic: '',
+                topics: [],
+                characterPostExamples: [],
+                characterMessageExamples: [],
+                goals: '',
+                goalsData: [],
+                recentPosts: '',
+                attachments: [],
+                adjective: '',
+                discordClient: null,
+                discordMessage: null,
+                discordChannel: null,
+                discordGuild: null,
+                discordMember: null,
+                discordReaction: null
+            };
+        }
 
-        // Check for explicit save commands including uppercase
-        if (text === 'save_memory' ||
-            text.includes('save this') ||
-            text.includes('remember this') ||
-            message.content?.text?.includes('SAVE_MEMORY')) {
-
+        if (isSaveMemoryCommand(message)) {
             const newState = {
                 ...(state || {}),
                 shouldSave: true,
-                messageToSave: message  // Store the message to be saved
+                messageToSave: message,
+                commandContext: {
+                    command: 'SAVE_MEMORY',
+                    timestamp: Date.now(),
+                    originalMessage: message.content?.text,
+                    source: 'explicit_command'
+                }
             };
 
+            trackStateTransition('Provider', 'get', state, newState);
             logState('Provider', 'get.newState', newState);
-            return newState;
+
+            // Deep clone to ensure immutability
+            return JSON.parse(safeStringify(newState));
         }
 
         logState('Provider', 'get.unchangedState', state);

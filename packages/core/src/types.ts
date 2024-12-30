@@ -27,6 +27,12 @@ export interface Content {
     /** Array of media attachments */
     attachments?: Media[];
 
+    /** Command context for command-based messages */
+    commandContext?: {
+        command: string;
+        [key: string]: unknown;
+    };
+
     /** Additional dynamic properties */
     [key: string]: unknown;
 }
