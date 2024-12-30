@@ -45,6 +45,9 @@ const saveMemoryAction: Action = {
         callback: HandlerCallback
     ) => {
         try {
+            elizaLogger.info("saveMemoryAction: Received message:", message.content.text);
+            elizaLogger.info("saveMemoryAction: Current state:", state);
+
             // Only proceed if explicitly requested via state
             if (!state?.shouldSave) {
                 elizaLogger.info("Save operation was not explicitly requested");
@@ -156,13 +159,14 @@ export const saveMemoryEvaluator: Evaluator = {
     description: "Evaluates whether the user wants to save a memory",
     similes: ["memory saver", "knowledge keeper"],
     validate: async (runtime: IAgentRuntime, message: Memory) => {
+        elizaLogger.info("saveMemoryEvaluator: Validating message:", message.content.text);
         const text = message.content?.text?.toLowerCase() || '';
         return Promise.resolve(text === 'save_memory' ||
                text.includes('save this') ||
                text.includes('remember this'));
     },
     handler: async (runtime: IAgentRuntime, message: Memory) => {
-        elizaLogger.info("********  Knowledge save requested: *******", message.content.text);
+        elizaLogger.info("saveMemoryEvaluator: handler: Knowledge save evaluated: *******", message.content.text);
     },
     examples: [
         {
@@ -183,13 +187,21 @@ export const saveMemoryEvaluator: Evaluator = {
 export const memoryStateProvider: Provider = {
     get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
         const text = message.content?.text?.toLowerCase() || '';
+        // Log provider information
+        elizaLogger.info("memoryStateProvider: get: Received message:", {
+            text,
+            roomId: message.roomId,
+            userId: message.userId,
+            direction: state?.messageDirection
+        });
+        //elizaLogger.info("memoryStateProvider: get: Current state:", state?);
 
         // Only set shouldSave flag for explicit save commands
         if (text === 'save_memory' ||
             text.includes('save this') ||
             text.includes('remember this')) {
             return {
-                ...state,
+                ...(state || {}),
                 shouldSave: true
             };
         }
@@ -224,5 +236,5 @@ export const databaseLoaderPlugin: Plugin = {
     description: "Plugin for managing and utilizing persistent memory storage",
     actions: [saveMemoryAction],
     evaluators: [saveMemoryEvaluator],
-    providers: [memoryStateProvider, simpleProvider]
+    providers: [memoryStateProvider]
 };
