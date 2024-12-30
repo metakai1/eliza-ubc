@@ -304,6 +304,13 @@ export const saveMemoryEvaluator: Evaluator = {
     },
     examples: [
         {
+            /**
+             * When user requests to save knowledge
+             *
+             * This example shows how the evaluator is triggered when the user explicitly
+             * asks to save a memory. The evaluator should detect the save command and
+             * flag the message for saving.
+             */
             context: "When user requests to save knowledge",
             messages: [
                 {
