@@ -260,6 +260,72 @@ async processActions(
 }
 ```
 
+### 2. Action Resolution
+
+The action resolution process matches the LLM's requested action with registered actions, including their similes:
+
+```mermaid
+graph TD
+    A[LLM Response] --> B[Extract Action Name]
+    B --> C[Normalize Action]
+    C --> D{Find Match}
+    
+    subgraph "Normalization"
+        C --> |"e.g. TAKE_ORDER"| E[Lowercase]
+        E --> |"take_order"| F[Remove Underscores]
+        F --> |"takeorder"| G[Normalized]
+    end
+    
+    subgraph "Action Registry"
+        H[Registered Actions] --> |Contains| I[Primary Names]
+        H --> |Contains| J[Similes]
+        I --> D
+        J --> D
+    end
+    
+    D --> |Match Found| K[Continue to Validation]
+    D --> |No Match| L[Log Warning]
+    
+    style A fill:#f9f,stroke:#333
+    style D fill:#bbf,stroke:#333
+    style K fill:#bfb,stroke:#333
+    style L fill:#fbb,stroke:#333
+```
+
+```typescript
+async processActions(
+    message: Memory,
+    responses: Memory[],
+    state?: State
+): Promise<void> {
+    for (const response of responses) {
+        // Extract and normalize action name
+        const normalizedAction = response.content?.action
+            .toLowerCase()
+            .replace("_", "");
+
+        // Find matching action (including similes)
+        const action = this.actions.find(
+            (a) => [a.name.toLowerCase(), ...a.similes.map(s => s.toLowerCase())]
+                .includes(normalizedAction)
+        );
+
+        if (!action) {
+            runtime.logger.warn(`Unknown action: ${normalizedAction}`);
+            continue;
+        }
+
+        // Rest of processing...
+    }
+}
+```
+
+The diagram shows how:
+1. Action names are extracted from LLM responses
+2. Names are normalized through lowercase and underscore removal
+3. The normalized name is matched against both primary names and similes
+4. Successful matches proceed to validation, while failures are logged
+
 ### 3. Validation Phase
 Before an action is executed, its validation function is called:
 ```typescript
