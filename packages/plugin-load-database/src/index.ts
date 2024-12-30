@@ -331,28 +331,10 @@ export const memoryStateProvider: Provider = {
             text.includes('remember this') ||
             message.content?.text?.includes('SAVE_MEMORY')) {
 
-            // Get recent messages to find the last interesting one
-            const recentMessages = await runtime.messageManager.getMemories({
-                roomId: message.roomId,
-                count: 5,
-                unique: false
-            });
-
-            // Find the last message from the agent before the save command
-            const messageToSave = recentMessages.find(m => 
-                m.agentId === runtime.agentId && 
-                m.id !== message.id
-            );
-
-            if (!messageToSave) {
-                elizaLogger.info('[Provider] No recent message found to save');
-                return state;
-            }
-
             // Modify state in place
             if (state) {
                 state.shouldSave = true;
-                state.messageToSave = messageToSave;
+                state.messageToSave = message;
                 logState('Provider', 'get.modifiedState', state);
                 return state;
             }

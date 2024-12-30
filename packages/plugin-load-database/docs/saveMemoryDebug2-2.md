@@ -258,8 +258,8 @@ const recentMessages = await runtime.messageManager.getMemories({
     unique: false
 });
 
-const messageToSave = recentMessages.find(m => 
-    m.agentId === runtime.agentId && 
+const messageToSave = recentMessages.find(m =>
+    m.agentId === runtime.agentId &&
     m.id !== message.id
 );
 
