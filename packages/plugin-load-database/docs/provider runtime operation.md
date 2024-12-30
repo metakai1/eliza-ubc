@@ -624,3 +624,330 @@ const customProvider: Provider = {
 ```
 
 This document outlines the core operation of providers in the Eliza runtime system. Providers are essential for maintaining state, providing context, and integrating external data into the agent's operation flow.
+
+## Appendix: Provider Case Studies
+
+### Case Study 1: Knowledge Base Provider
+A provider that retrieves relevant knowledge based on semantic similarity.
+
+```typescript
+interface KnowledgeProvider extends Provider {
+    get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        // 1. Extract query from message
+        const query = message.content.text;
+        
+        // 2. Get embeddings for query
+        const embedding = await runtime.getService('embedding')
+            .getEmbedding(query);
+        
+        // 3. Search knowledge base
+        const results = await runtime.knowledgeManager.search({
+            embedding,
+            limit: 3,
+            threshold: 0.7
+        });
+        
+        // 4. Format results
+        if (!results.length) return null;
+        
+        return `
+        RELEVANT_KNOWLEDGE:
+        ${results.map(r => `- ${r.content}`).join('\n')}
+        `;
+    }
+}
+
+// Usage:
+const runtime = new AgentRuntime({
+    providers: [new KnowledgeProvider()],
+    // ... other config
+});
+```
+
+### Case Study 2: User Preference Provider
+Maintains and provides user preferences across conversations.
+
+```typescript
+interface UserPreferences {
+    language: string;
+    timezone: string;
+    notificationPrefs: string[];
+}
+
+class PreferenceProvider implements Provider {
+    private cache: Map<string, UserPreferences> = new Map();
+
+    async get(runtime: IAgentRuntime, message: Memory, state?: State) {
+        if (!state?.userId) return null;
+
+        // 1. Check cache first
+        let prefs = this.cache.get(state.userId);
+        
+        if (!prefs) {
+            // 2. Load from database
+            const results = await runtime.databaseAdapter.query(
+                'SELECT preferences FROM users WHERE id = ?',
+                [state.userId]
+            );
+            
+            if (results.length) {
+                prefs = results[0].preferences;
+                this.cache.set(state.userId, prefs);
+            }
+        }
+
+        // 3. Return formatted preferences
+        if (!prefs) return null;
+
+        return `
+        USER_PREFERENCES:
+        Language: ${prefs.language}
+        Timezone: ${prefs.timezone}
+        Notifications: ${prefs.notificationPrefs.join(', ')}
+        `;
+    }
+}
+```
+
+### Case Study 3: Conversation Memory Provider
+Provides relevant historical conversations based on current context.
+
+```typescript
+class ConversationMemoryProvider implements Provider {
+    async get(runtime: IAgentRuntime, message: Memory, state?: State) {
+        if (!state?.roomId) return null;
+
+        // 1. Get recent messages
+        const recentMessages = await runtime.messageManager.getMessages({
+            roomId: state.roomId,
+            limit: 10,
+            order: 'DESC'
+        });
+
+        // 2. Find relevant older messages
+        const olderMessages = await this.findRelevantHistory(
+            runtime,
+            message,
+            state.roomId
+        );
+
+        // 3. Combine and format
+        return this.formatConversationContext(
+            recentMessages,
+            olderMessages
+        );
+    }
+
+    private async findRelevantHistory(
+        runtime: IAgentRuntime,
+        currentMessage: Memory,
+        roomId: string
+    ) {
+        // Get embedding for current message
+        const embedding = await runtime.getService('embedding')
+            .getEmbedding(currentMessage.content.text);
+
+        // Search message history
+        return runtime.messageManager.search({
+            roomId,
+            embedding,
+            limit: 5,
+            threshold: 0.8,
+            timeRange: {
+                start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // 30 days
+            }
+        });
+    }
+
+    private formatConversationContext(
+        recent: Memory[],
+        historical: Memory[]
+    ): string {
+        return `
+        RECENT_CONVERSATION:
+        ${this.formatMessages(recent)}
+
+        RELEVANT_HISTORY:
+        ${this.formatMessages(historical)}
+        `;
+    }
+
+    private formatMessages(messages: Memory[]): string {
+        return messages
+            .map(m => `${m.userId}: ${m.content.text}`)
+            .join('\n');
+    }
+}
+```
+
+### Case Study 4: External API Provider
+Integrates real-time data from external APIs.
+
+```typescript
+interface WeatherData {
+    temperature: number;
+    condition: string;
+    forecast: string[];
+}
+
+class WeatherProvider implements Provider {
+    private readonly API_KEY: string;
+    private readonly CACHE_TTL = 1800000; // 30 minutes
+
+    constructor(apiKey: string) {
+        this.API_KEY = apiKey;
+    }
+
+    async get(runtime: IAgentRuntime, message: Memory, state?: State) {
+        // 1. Check if weather info is needed
+        if (!this.isWeatherRelevant(message.content.text)) {
+            return null;
+        }
+
+        // 2. Get user's location from state
+        const location = await this.getUserLocation(runtime, state);
+        if (!location) return null;
+
+        // 3. Check cache
+        const cacheKey = `weather_${location}`;
+        const cached = await runtime.cacheManager.get(cacheKey);
+        if (cached) return cached;
+
+        // 4. Fetch weather data
+        try {
+            const weather = await this.fetchWeatherData(location);
+            
+            // 5. Format response
+            const context = this.formatWeatherContext(weather);
+            
+            // 6. Cache result
+            await runtime.cacheManager.set(
+                cacheKey,
+                context,
+                this.CACHE_TTL
+            );
+            
+            return context;
+        } catch (error) {
+            console.error('Weather API error:', error);
+            return null;
+        }
+    }
+
+    private isWeatherRelevant(text: string): boolean {
+        const weatherKeywords = [
+            'weather', 'temperature', 'forecast',
+            'rain', 'sunny', 'cold', 'hot'
+        ];
+        return weatherKeywords.some(kw => 
+            text.toLowerCase().includes(kw)
+        );
+    }
+
+    private async fetchWeatherData(
+        location: string
+    ): Promise<WeatherData> {
+        const response = await fetch(
+            `https://api.weather.com/v1/forecast?` +
+            `location=${encodeURIComponent(location)}` +
+            `&apikey=${this.API_KEY}`
+        );
+        return response.json();
+    }
+
+    private formatWeatherContext(weather: WeatherData): string {
+        return `
+        WEATHER_INFORMATION:
+        Current Temperature: ${weather.temperature}°C
+        Condition: ${weather.condition}
+        
+        3-Day Forecast:
+        ${weather.forecast.join('\n')}
+        `;
+    }
+}
+```
+
+### Case Study 5: Stateful Task Provider
+Manages and provides context about ongoing tasks or conversations.
+
+```typescript
+interface TaskState {
+    currentStep: number;
+    totalSteps: number;
+    taskType: string;
+    startTime: Date;
+}
+
+class TaskProvider implements Provider {
+    async get(runtime: IAgentRuntime, message: Memory, state?: State) {
+        if (!state) return null;
+
+        // 1. Get or initialize task state
+        let taskState = state.taskState as TaskState;
+        if (!taskState && this.isTaskInitiation(message)) {
+            taskState = await this.initializeTask(message);
+            state.taskState = taskState;
+        }
+
+        if (!taskState) return null;
+
+        // 2. Update task state based on message
+        taskState = await this.updateTaskState(
+            taskState,
+            message
+        );
+        state.taskState = taskState;
+
+        // 3. Generate task context
+        return this.generateTaskContext(taskState);
+    }
+
+    private isTaskInitiation(message: Memory): boolean {
+        const initiationPhrases = [
+            'let\'s start',
+            'begin task',
+            'new task'
+        ];
+        return initiationPhrases.some(phrase =>
+            message.content.text.toLowerCase().includes(phrase)
+        );
+    }
+
+    private async initializeTask(
+        message: Memory
+    ): Promise<TaskState> {
+        return {
+            currentStep: 1,
+            totalSteps: await this.analyzeTotalSteps(message),
+            taskType: await this.determineTaskType(message),
+            startTime: new Date()
+        };
+    }
+
+    generateTaskContext(task: TaskState): string {
+        const duration = Date.now() - task.startTime.getTime();
+        
+        return `
+        CURRENT_TASK_STATUS:
+        Type: ${task.taskType}
+        Progress: Step ${task.currentStep} of ${task.totalSteps}
+        Duration: ${Math.floor(duration / 1000)}s
+        
+        TASK_CONTEXT:
+        ${this.getStepSpecificContext(task)}
+        `;
+    }
+}
+```
+
+These case studies demonstrate:
+1. Integration with runtime services
+2. Efficient caching strategies
+3. State management
+4. Error handling
+5. External API integration
+6. Context formatting
+7. Real-world implementation patterns
+
+Each example shows a different aspect of provider implementation and can be used as a template for similar use cases.
