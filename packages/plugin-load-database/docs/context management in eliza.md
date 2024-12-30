@@ -406,6 +406,157 @@ In this example, the action:
 - Uses that context to determine temperature unit
 - Doesn't add to the context, but produces a response informed by the context
 
+### Q: How does the runtime process evaluator results?
+A: The runtime's [evaluate](cci:1://file:///home/kai/eliza/eliza/packages/core/src/runtime.ts:762:4-1211:5) method processes evaluator results in several steps:
+
+1. **Evaluation Process**:
+```typescript
+// In AgentRuntime.evaluate
+async evaluate(
+    message: Memory,
+    state?: State,
+    didRespond?: boolean,
+    callback?: HandlerCallback
+) {
+    // Run all evaluators in parallel
+    const evaluatorPromises = this.evaluators.map(
+        async (evaluator: Evaluator) => {
+            // Skip if no handler or if agent didn't respond
+            if (!evaluator.handler || (!didRespond && !evaluator.alwaysRun)) {
+                return null;
+            }
+            
+            // Run the evaluator's validation
+            const result = await evaluator.validate(this, message, state);
+            if (result) {
+                // Process result...
+                return result;
+            }
+            return null;
+        }
+    );
+    
+    // Wait for all evaluations
+    const results = await Promise.all(evaluatorPromises);
+    
+    // Filter out nulls and process results
+    return results.filter(Boolean);
+}
+```
+
+2. **Result Processing**:
+   - Each evaluator returns a validation result with:
+     - `pass`: boolean indicating success/failure
+     - `reason`: explanation of the result
+   - The runtime collects all results
+   - Failed evaluations can trigger:
+     - Response regeneration
+     - Callback execution
+     - State updates
+
+3. **Control Flow**:
+```mermaid
+graph TD
+    E[Evaluate Response] --> V{All Valid?}
+    V -->|Yes| S[Save Response]
+    V -->|No| R[Regenerate]
+    R --> N[New Context]
+    N --> E
+```
+
+4. **Usage Example**:
+```typescript
+// In some higher-level function
+async processResponse(message: Memory, state: State) {
+    // Generate initial response
+    let response = await generateResponse(message, state);
+    
+    // Evaluate response
+    const evalResults = await this.evaluate(
+        message,
+        state,
+        true, // didRespond
+        async (newResponse) => {
+            // This callback runs if evaluation fails
+            response = newResponse;
+            // Regenerate with new context...
+        }
+    );
+    
+    // Check results
+    const allPassed = evalResults.every(r => r.pass);
+    if (!allPassed) {
+        // Handle failed evaluation...
+        await regenerateResponse(message, state);
+    }
+}
+```
+
+So the runtime uses evaluator results to:
+1. Determine if a response is acceptable
+2. Trigger regeneration if needed
+3. Provide feedback for learning
+4. Maintain response quality
+5. Guide future responses through state updates
+
+The process creates a quality-control loop that helps maintain response consistency and quality over time.
+
+### Q: How does the state object get populated with data like actorsData and userId?
+A: The state object is populated by the runtime's [composeState](cci:1://file:///home/kai/eliza/eliza/packages/core/src/runtime.ts:1:1-1:1) method before any providers or actions run. Here's the flow:
+
+1. **Initial State Population**:
+```typescript
+// In AgentRuntime.composeState
+async composeState(message: Memory) {
+    const { userId, roomId } = message;
+    
+    // Parallel fetching of data
+    const [actorsData, recentMessagesData, goalsData] = await Promise.all([
+        getActorDetails({ runtime: this, roomId }),
+        this.messageManager.getMemories({
+            roomId,
+            count: conversationLength,
+            unique: false
+        }),
+        getGoals({
+            runtime: this,
+            roomId,
+            userId
+        })
+    ]);
+    
+    // All this data becomes available in state
+    return {
+        userId,
+        roomId,
+        actorsData,
+        recentMessagesData,
+        goalsData,
+        // ... other fields
+    };
+}
+```
+
+2. **Data Sources**:
+   - `userId`: Comes from the incoming message
+   - `actorsData`: Fetched from database using `getActorDetails`
+   - `recentMessages`: Fetched from message history
+   - `goalsData`: Fetched from active goals
+
+3. **Access Pattern**:
+```typescript
+// In an action or provider
+async handler(runtime: IAgentRuntime, message: Memory, state: State) {
+    // state already has the data populated
+    const userPrefs = state.actorsData?.find(
+        a => a.id === state.userId
+    );
+    // No need to fetch or scan context string
+}
+```
+
+So when you access `state.actorsData` in an action or provider, you're not scanning the context string - you're accessing structured data that was already loaded by the runtime during state composition.
+
 ### Q: How do evaluators affect the agent's behavior and future context?
 A: Evaluators serve as quality control for the agent's responses. While they don't directly modify the immediate context, they can affect the agent's behavior in several ways:
 
@@ -494,62 +645,6 @@ So while evaluators don't directly modify the current context, they create a fee
 2. What context is available for future interactions
 3. How providers shape future responses
 4. The agent's learning and adaptation over time
-
-### Q: How does the state object get populated with data like actorsData and userId?
-A: The state object is populated by the runtime's [composeState](cci:1://file:///home/kai/eliza/eliza/packages/core/src/runtime.ts:1:1-1:1) method before any providers or actions run. Here's the flow:
-
-1. **Initial State Population**:
-```typescript
-// In AgentRuntime.composeState
-async composeState(message: Memory) {
-    const { userId, roomId } = message;
-    
-    // Parallel fetching of data
-    const [actorsData, recentMessagesData, goalsData] = await Promise.all([
-        getActorDetails({ runtime: this, roomId }),
-        this.messageManager.getMemories({
-            roomId,
-            count: conversationLength,
-            unique: false
-        }),
-        getGoals({
-            runtime: this,
-            roomId,
-            userId
-        })
-    ]);
-    
-    // All this data becomes available in state
-    return {
-        userId,
-        roomId,
-        actorsData,
-        recentMessagesData,
-        goalsData,
-        // ... other fields
-    };
-}
-```
-
-2. **Data Sources**:
-   - `userId`: Comes from the incoming message
-   - `actorsData`: Fetched from database using `getActorDetails`
-   - `recentMessages`: Fetched from message history
-   - `goalsData`: Fetched from active goals
-
-3. **Access Pattern**:
-```typescript
-// In an action or provider
-async handler(runtime: IAgentRuntime, message: Memory, state: State) {
-    // state already has the data populated
-    const userPrefs = state.actorsData?.find(
-        a => a.id === state.userId
-    );
-    // No need to fetch or scan context string
-}
-```
-
-So when you access `state.actorsData` in an action or provider, you're not scanning the context string - you're accessing structured data that was already loaded by the runtime during state composition.
 
 _Note: This FAQ will be updated with new Q&As from our ongoing discussions._
 
