@@ -86,6 +86,103 @@ sequenceDiagram
 - Manages state transitions
 - Supports get operations
 
+## Provider's Get Method: The Hidden State Manager
+
+The Provider's `get()` method plays a crucial but often overlooked role in the save memory flow. It acts as a state manager that is automatically called by the runtime system during message processing.
+
+### When Provider.get() is Called
+
+```mermaid
+sequenceDiagram
+    participant R as Runtime
+    participant A as Action
+    participant P as Provider
+    participant S as State
+
+    R->>A: Process Message
+    A->>R: Need State
+    R->>P: get(message, state)
+    P->>S: Check State
+    
+    alt Save Command Detected
+        S->>P: Current State
+        P->>S: Set shouldSave = true
+        P->>R: Return Modified State
+    else Normal Message
+        S->>P: Current State
+        P->>R: Return Unchanged State
+    end
+```
+
+### Provider's State Management Logic
+
+```typescript
+// Provider's get method is the state manager
+get: async (runtime: IAgentRuntime, message: Memory, state?: SaveMemoryState) => {
+    // Log initial state
+    logMessage('Provider', 'get.start', message);
+    logState('Provider', 'get.initialState', state);
+
+    const text = message.content?.text?.toLowerCase() || '';
+
+    // Check for save commands
+    if (text === 'save_memory' ||
+        text.includes('save this') ||
+        text.includes('remember this') ||
+        message.content?.text?.includes('SAVE_MEMORY')) {
+
+        // Modify state to trigger save
+        if (state) {
+            state.shouldSave = true;
+            state.messageToSave = message;
+            return state;
+        }
+    }
+
+    // Return unchanged state for normal messages
+    return state;
+}
+```
+
+### Key Points About Provider.get()
+
+1. **Automatic Invocation**
+   - Called by runtime system during message processing
+   - Part of the standard message handling pipeline
+   - No explicit calls needed from Action or Evaluator
+
+2. **State Management Role**
+   - Acts as a central state manager
+   - Detects save commands
+   - Modifies state to trigger save operations
+   - Preserves state for normal messages
+
+3. **Command Detection**
+   - Checks for various save command formats
+   - Case-insensitive matching
+   - Supports multiple command variations
+
+4. **State Modification**
+   - Sets `shouldSave` flag
+   - Stores message to be saved
+   - Maintains state consistency
+
+### Provider State Flow
+
+```mermaid
+stateDiagram-v2
+    [*] --> InitialState
+    InitialState --> CheckCommand: Provider.get()
+    
+    CheckCommand --> ModifiedState: Save Command
+    CheckCommand --> UnchangedState: Normal Message
+    
+    ModifiedState --> [*]: shouldSave = true
+    UnchangedState --> [*]: State Preserved
+```
+
+This explains why we see the Provider's get operation in the logs - it's automatically called as part of the message processing pipeline, serving as a crucial state manager for the save memory operation.
+
 ## State Transitions
 
 ```mermaid
