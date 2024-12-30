@@ -63,36 +63,31 @@ stateDiagram-v2
     DataSavedState --> ErrorState: State validation
     ErrorState --> [*]
 
-    state "InitialState" as InitialState {
-        [*] --> NoFlags
-        NoFlags: shouldSave: undefined
-        NoFlags: messageToSave: undefined
-    }
+    note right of InitialState
+        shouldSave: undefined
+        messageToSave: undefined
+    end note
 
-    state "StateWithSaveFlag" as StateWithSaveFlag {
-        [*] --> SaveFlagSet
-        SaveFlagSet: shouldSave: true
-        SaveFlagSet: messageToSave: SAVE_MEMORY
-    }
+    note right of StateWithSaveFlag
+        shouldSave: true
+        messageToSave: SAVE_MEMORY
+    end note
 
-    state "ActionHandlerState" as ActionHandlerState {
-        [*] --> HandlerState
-        HandlerState: shouldSave: true
-        HandlerState: foundMessage: Goa_response
-        HandlerState: stateMessage: SAVE_MEMORY
-    }
+    note right of ActionHandlerState
+        shouldSave: true
+        foundMessage: Goa_response
+        stateMessage: SAVE_MEMORY
+    end note
 
-    state "DataSavedState" as DataSavedState {
-        [*] --> SavedState
-        SavedState: data stored
-        SavedState: awaiting validation
-    }
+    note right of DataSavedState
+        Data stored in DB
+        Awaiting validation
+    end note
 
-    state "ErrorState" as ErrorState {
-        [*] --> StateError
-        StateError: empty error object
-        StateError: state/save mismatch
-    }
+    note right of ErrorState
+        Empty error object
+        State/save mismatch
+    end note
 ```
 
 ## Key Observations
