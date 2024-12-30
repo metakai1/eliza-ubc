@@ -636,23 +636,26 @@ interface KnowledgeProvider extends Provider {
         // 1. Extract query from message
         const query = message.content.text;
         
-        // 2. Get embeddings for query
-        const embedding = await runtime.getService('embedding')
-            .getEmbedding(query);
+        // 2. Get embeddings for query using core embed function
+        const embedding = await embed(runtime, query);
         
-        // 3. Search knowledge base
-        const results = await runtime.knowledgeManager.search({
+        // 3. Search knowledge base using memory manager
+        const results = await runtime.knowledgeManager.searchMemoriesByEmbedding(
             embedding,
-            limit: 3,
-            threshold: 0.7
-        });
+            {
+                match_threshold: 0.7,
+                count: 3,
+                roomId: message.roomId,
+                unique: true
+            }
+        );
         
         // 4. Format results
         if (!results.length) return null;
         
         return `
         RELEVANT_KNOWLEDGE:
-        ${results.map(r => `- ${r.content}`).join('\n')}
+        ${results.map(r => `- ${r.content.text}`).join('\n')}
         `;
     }
 }
@@ -744,19 +747,18 @@ class ConversationMemoryProvider implements Provider {
         roomId: string
     ) {
         // Get embedding for current message
-        const embedding = await runtime.getService('embedding')
-            .getEmbedding(currentMessage.content.text);
+        const embedding = await embed(runtime, currentMessage.content.text);
 
         // Search message history
-        return runtime.messageManager.search({
-            roomId,
+        return runtime.messageManager.searchMemoriesByEmbedding(
             embedding,
-            limit: 5,
-            threshold: 0.8,
-            timeRange: {
-                start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // 30 days
+            {
+                match_threshold: 0.8,
+                count: 5,
+                roomId,
+                unique: true
             }
-        });
+        );
     }
 
     private formatConversationContext(
