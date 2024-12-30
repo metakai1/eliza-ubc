@@ -406,6 +406,62 @@ In this example, the action:
 - Uses that context to determine temperature unit
 - Doesn't add to the context, but produces a response informed by the context
 
+### Q: How does the state object get populated with data like actorsData and userId?
+A: The state object is populated by the runtime's [composeState](cci:1://file:///home/kai/eliza/eliza/packages/core/src/runtime.ts:1:1-1:1) method before any providers or actions run. Here's the flow:
+
+1. **Initial State Population**:
+```typescript
+// In AgentRuntime.composeState
+async composeState(message: Memory) {
+    const { userId, roomId } = message;
+    
+    // Parallel fetching of data
+    const [actorsData, recentMessagesData, goalsData] = await Promise.all([
+        getActorDetails({ runtime: this, roomId }),
+        this.messageManager.getMemories({
+            roomId,
+            count: conversationLength,
+            unique: false
+        }),
+        getGoals({
+            runtime: this,
+            roomId,
+            userId
+        })
+    ]);
+    
+    // All this data becomes available in state
+    return {
+        userId,
+        roomId,
+        actorsData,
+        recentMessagesData,
+        goalsData,
+        // ... other fields
+    };
+}
+```
+
+2. **Data Sources**:
+   - `userId`: Comes from the incoming message
+   - `actorsData`: Fetched from database using `getActorDetails`
+   - `recentMessages`: Fetched from message history
+   - `goalsData`: Fetched from active goals
+
+3. **Access Pattern**:
+```typescript
+// In an action or provider
+async handler(runtime: IAgentRuntime, message: Memory, state: State) {
+    // state already has the data populated
+    const userPrefs = state.actorsData?.find(
+        a => a.id === state.userId
+    );
+    // No need to fetch or scan context string
+}
+```
+
+So when you access `state.actorsData` in an action or provider, you're not scanning the context string - you're accessing structured data that was already loaded by the runtime during state composition.
+
 _Note: This FAQ will be updated with new Q&As from our ongoing discussions._
 
 ## Conclusion
