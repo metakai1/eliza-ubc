@@ -89,53 +89,101 @@ const saveMemoryAction: Action = {
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
-        state: SaveMemoryState
+        state: SaveMemoryState,
+        _options: { [key: string]: unknown },
+        callback?: HandlerCallback
     ) => {
         try {
             // Get recent messages
             const recentMessages = await runtime.messageManager.getMemories({
                 roomId: message.roomId,
-                count: 3,
+                count: 5,
                 unique: false
             });
 
-            const combinedText = recentMessages
+            // combine the text from recent messages into a string
+            const recentMessagesText = recentMessages
                 .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
                 .map(msg => msg.content.text)
                 .join("\n\n");
 
-            if (!combinedText) {
-                return {
-                    text: "I couldn't find any recent messages to save.",
+            // combine the text from recent messages into a string
+            const combinedText = recentMessages
+                .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+                .map(msg => {
+                    const role = msg.agentId ? 'Assistant' : 'User';
+                    return `${role}: ${msg.content.text}`;
+                })
+                .join("\n\n");
+
+            elizaLogger.info('[Action] recent messages', recentMessagesText);
+
+            elizaLogger.info('[Action] generate text with context', combinedText);
+
+            if (callback) {
+                await callback({
+                    text: "Summary in progress...",
                     content: {
-                        text: "I couldn't find any recent messages to save."
+                        text: "Summary in progress..."
                     }
-                };
+                }, []);
+            }
+
+            const savedKnowlege = await generateText({
+                runtime,
+                context: `from the conversation of the following messages, extract the interesting information so it can be saved to a database for future reference. Do not store information about the user.
+                Focus on saving knowledge, not conversation history.  Don't save what the conversation is about, but rather the interesting facts contained in the responses by the agent.
+                Save the memory as a paragraph of text, not in point form.
+                ${recentMessagesText}
+
+                Knowledge:`,
+                modelClass: "medium"
+            });
+
+            if (!savedKnowlege) {
+                if (callback) {
+                    await callback({
+                        text: "I couldn't find any recent messages to save.",
+                        content: {
+                            text: "I couldn't find any recent messages to save."
+                        }
+                    }, []);
+                }
+                return false;
             }
 
             // Save the message content to the knowledge base
             const memoryToSave = {
                 id: stringToUuid(`memory_${Date.now()}`),
                 content: {
-                    text: combinedText
+                    text: savedKnowlege,
+                    source: "agentdata"
                 }
             };
+
             await knowledge.set(runtime as AgentRuntime, memoryToSave);
 
-            return {
-                text: `I've stored this information: "${combinedText}"`,
-                content: {
-                    text: `I've stored this information: "${combinedText}"`
-                }
-            };
+            if (callback) {
+                await callback({
+                    text: `I've stored this information: "${savedKnowlege}"`,
+                    content: {
+                        text: `I've stored this information: "${savedKnowlege}"`
+                    }
+                }, []);
+            }
+
+            return true;
         } catch (error) {
             elizaLogger.error('[Action] handler.error:', error);
-            return {
-                text: "Sorry, I encountered an error while saving.",
-                content: {
-                    text: "Sorry, I encountered an error while saving."
-                }
-            };
+            if (callback) {
+                await callback({
+                    text: "Sorry, I encountered an error while saving.",
+                    content: {
+                        text: "Sorry, I encountered an error while saving."
+                    }
+                }, []);
+            }
+            return false;
         }
     },
     examples: []
