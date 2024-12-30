@@ -222,6 +222,95 @@ const action: Action = {
 };
 ```
 
+## Action Triggering
+
+Actions are triggered through a multi-step process:
+
+### 1. LLM Response
+The Language Model generates a response that includes an action name in its output. This can be either:
+- The primary action name (e.g., "TAKE_ORDER")
+- One of its similes (e.g., "BUY_ORDER", "PLACE_ORDER")
+
+### 2. Action Resolution
+```typescript
+async processActions(
+    message: Memory,
+    responses: Memory[],
+    state?: State
+): Promise<void> {
+    for (const response of responses) {
+        // Extract and normalize action name
+        const normalizedAction = response.content?.action
+            .toLowerCase()
+            .replace("_", "");
+
+        // Find matching action (including similes)
+        const action = this.actions.find(
+            (a) => [a.name.toLowerCase(), ...a.similes.map(s => s.toLowerCase())]
+                .includes(normalizedAction)
+        );
+
+        if (!action) {
+            runtime.logger.warn(`Unknown action: ${normalizedAction}`);
+            continue;
+        }
+
+        // Rest of processing...
+    }
+}
+```
+
+### 3. Validation Phase
+Before an action is executed, its validation function is called:
+```typescript
+const validation = await action.validate(runtime, message, state);
+if (!validation.pass) {
+    runtime.logger.warn(`Action validation failed: ${validation.reason}`);
+    continue;
+}
+```
+
+The validation function can check:
+- Required parameters
+- User permissions
+- System state
+- External conditions
+
+### 4. Execution Phase
+If validation passes, the action's handler is executed:
+```typescript
+try {
+    await action.handler(runtime, message, state);
+} catch (error) {
+    runtime.logger.error("Action execution failed", {
+        action: action.name,
+        error: error.message
+    });
+}
+```
+
+### Special Cases
+
+1. **Multiple Actions**
+   - Multiple actions can be triggered in sequence
+   - Each action is processed independently
+   - Failure of one action doesn't prevent others
+
+2. **Default Actions**
+   - NONE: Used for standard responses
+   - CONTINUE: For maintaining conversation flow
+   - IGNORE: For graceful disengagement
+
+3. **Action Chaining**
+   - Actions can trigger other actions
+   - Must avoid circular dependencies
+   - Should implement proper rollback
+
+4. **Error Handling**
+   - Failed validation skips the action
+   - Runtime errors are logged
+   - State is maintained for retry
+
 ## Runtime Processing
 
 ### Action Selection and Execution
@@ -439,17 +528,20 @@ const enhancedAction: Action = {
 
 ### Q: When should I use an action vs a provider?
 A: Use an action when you need to:
-- Modify system state
-- Perform external operations
-- Handle user commands
+- Perform discrete, command-like operations
+- Handle user commands explicitly
 - Execute multi-step operations
 - Control conversation flow
+- Implement specific business logic
 
 Use a provider when you need to:
-- Supply context to the LLM
-- Read (but not modify) state
-- Format information for context
-- Provide real-time data
+- Inject dynamic context into conversations
+- Manage state across interactions
+- Bridge between agent and external systems
+- Process messages before agent handling
+- Supply real-time data and context
+
+The key difference is that actions are explicit operations triggered by specific conditions or commands, while providers run on every message to supply context and manage state. Both can modify state, but they do so for different purposes - actions for specific operations, providers for ongoing state management.
 
 ### Q: How do actions interact with state?
 A: Actions can both read and modify state through:
