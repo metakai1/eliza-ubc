@@ -262,7 +262,20 @@ async processActions(
 
 ### 2. Action Resolution
 
-The action resolution process matches the LLM's requested action with registered actions, including their similes:
+The action resolution process matches the LLM's requested action with registered actions, including their similes. Action names are normalized to ensure consistent matching regardless of formatting:
+
+1. **Normalization Rules**:
+   - Convert to lowercase (e.g., "TAKE_ORDER" → "take_order")
+   - Remove underscores (e.g., "take_order" → "takeorder")
+   - Trim whitespace
+   - Special characters are not allowed in action names
+
+2. **Matching Process**:
+   - The normalized action name is compared against:
+     - The normalized primary action name
+     - All normalized similes
+   - First matching action is selected
+   - Case-insensitive matching ensures flexibility
 
 ```mermaid
 graph TD
@@ -590,63 +603,342 @@ const enhancedAction: Action = {
 };
 ```
 
-## FAQ
+## Frequently Asked Questions
 
-### Q: When should I use an action vs a provider?
-A: Use an action when you need to:
-- Perform discrete, command-like operations
-- Handle user commands explicitly
-- Execute multi-step operations
-- Control conversation flow
-- Implement specific business logic
+### Q: How do I debug action resolution failures?
+A: Follow these steps:
+1. Enable debug logging:
+```typescript
+runtime.logger.setLevel('debug');
+```
 
-Use a provider when you need to:
-- Inject dynamic context into conversations
-- Manage state across interactions
-- Bridge between agent and external systems
-- Process messages before agent handling
-- Supply real-time data and context
+2. Check the normalized action name:
+```typescript
+console.log('Normalized:', response.content?.action
+    .toLowerCase()
+    .replace("_", ""));
+```
 
-The key difference is that actions are explicit operations triggered by specific conditions or commands, while providers run on every message to supply context and manage state. Both can modify state, but they do so for different purposes - actions for specific operations, providers for ongoing state management.
+3. List registered actions and similes:
+```typescript
+console.log('Available actions:', runtime.actions
+    .map(a => ({
+        name: a.name,
+        similes: a.similes
+    })));
+```
 
-### Q: How do actions interact with state?
-A: Actions can both read and modify state through:
-1. Direct state object access
-2. Runtime service operations
-3. Memory manager interactions
-4. External service calls
+4. Verify validation logic:
+```typescript
+const validation = await action.validate(runtime, message, state);
+console.log('Validation result:', validation);
+```
 
-The state modifications should be:
-- Atomic where possible
-- Properly rolled back on failure
-- Documented in action description
-- Reflected in runtime state
+### Q: What's the difference between similes and aliases?
+A: 
+- **Similes** are alternative names that mean exactly the same thing (e.g., "TAKE_ORDER", "PLACE_ORDER")
+- **Aliases** are shortcuts or variations that might have slightly different behavior
+- Always use similes for exact matches and implement separate actions for different behaviors
 
-### Q: Can actions trigger other actions?
-A: Yes, actions can trigger other actions, but follow these guidelines:
-1. Avoid circular dependencies
-2. Handle errors properly
-3. Maintain clear responsibility boundaries
-4. Document action chains
-5. Consider using a dedicated orchestrator for complex chains
-6. Implement proper rollback mechanisms
+### Q: How do I handle action timeouts?
+A: Implement timeout handling in your action:
+```typescript
+const actionWithTimeout: Action = {
+    handler: async (runtime, message, state) => {
+        const timeout = 30000; // 30 seconds
+        
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Action timeout')), timeout);
+        });
+        
+        try {
+            await Promise.race([
+                yourOperation(),
+                timeoutPromise
+            ]);
+        } catch (error) {
+            if (error.message === 'Action timeout') {
+                runtime.logger.warn('Action timed out');
+                // Cleanup or recovery logic
+            }
+            throw error;
+        }
+    }
+};
+```
 
-### Q: How do I handle long-running actions?
-A: For long-running operations:
-1. Use async/await properly
-2. Implement progress tracking
-3. Consider breaking into smaller actions
-4. Provide status updates
-5. Handle timeouts gracefully
-6. Use background jobs for very long operations
-7. Implement proper cleanup on failure
+### Q: Can actions modify the LLM's response?
+A: No, actions are executed after the LLM has generated its response. However, you can:
+1. Use providers to influence future responses
+2. Chain actions to handle response modifications
+3. Use evaluators to validate responses before action execution
 
-### Q: How should actions handle rate limits and quotas?
-A: Implement robust rate limiting by:
-1. Using runtime cache for quota tracking
-2. Implementing exponential backoff
-3. Providing clear error messages
-4. Considering user-specific limits
-5. Implementing circuit breakers for external services
+### Q: How do I handle action dependencies?
+A: For actions that depend on other actions:
 
-_Note: This FAQ will be updated with new Q&As from our ongoing discussions._
+1. Use explicit dependencies:
+```typescript
+interface ActionWithDeps extends Action {
+    dependencies: string[];
+}
+
+const dependentAction: ActionWithDeps = {
+    name: "PROCESS_ORDER",
+    dependencies: ["VALIDATE_USER", "CHECK_BALANCE"],
+    handler: async (runtime, message, state) => {
+        // Verify dependencies have run
+        const deps = state?.actionResults || {};
+        if (!deps.VALIDATE_USER || !deps.CHECK_BALANCE) {
+            throw new Error('Required actions not executed');
+        }
+        // Continue processing
+    }
+};
+```
+
+2. Implement rollback capabilities:
+```typescript
+interface ActionWithRollback extends Action {
+    rollback?: (runtime: IAgentRuntime, state: State) => Promise<void>;
+}
+
+const rollbackableAction: ActionWithRollback = {
+    handler: async (runtime, message, state) => {
+        try {
+            await performOperation();
+        } catch (error) {
+            if (this.rollback) {
+                await this.rollback(runtime, state);
+            }
+            throw error;
+        }
+    },
+    rollback: async (runtime, state) => {
+        // Cleanup logic
+    }
+};
+```
+
+### Q: How do I handle rate limiting in actions?
+A: Implement rate limiting using the runtime cache:
+```typescript
+const rateLimitedAction: Action = {
+    handler: async (runtime, message, state) => {
+        const key = `rate_limit:${this.name}:${message.userId}`;
+        const limit = 5; // requests
+        const window = 60000; // 1 minute
+        
+        const current = await runtime.cache.get(key) || 0;
+        if (current >= limit) {
+            throw new Error('Rate limit exceeded');
+        }
+        
+        await runtime.cache.set(key, current + 1, {
+            ttl: window
+        });
+        
+        // Continue with action
+    }
+};
+```
+
+### Q: How do I test action simile matching?
+A: Create test cases for all simile variations:
+```typescript
+describe('Action Resolution', () => {
+    const action = {
+        name: 'TEST_ACTION',
+        similes: ['DO_TEST', 'RUN_TEST']
+    };
+    
+    test.each([
+        'TEST_ACTION',
+        'test_action',
+        'DO_TEST',
+        'do_test',
+        'RUN_TEST',
+        'run_test'
+    ])('should match %s', async (actionName) => {
+        const response = createResponse(actionName);
+        const result = await runtime.processActions(message, [response]);
+        expect(result).toBeTruthy();
+    });
+});
+```
+
+### Q: How do I handle concurrent action execution?
+A: Use state locking and queuing:
+```typescript
+const concurrentAction: Action = {
+    handler: async (runtime, message, state) => {
+        const lockKey = `lock:${this.name}:${message.userId}`;
+        
+        if (await runtime.cache.get(lockKey)) {
+            // Either queue the action or reject
+            throw new Error('Action already in progress');
+        }
+        
+        try {
+            await runtime.cache.set(lockKey, true, { ttl: 30000 });
+            await performOperation();
+        } finally {
+            await runtime.cache.del(lockKey);
+        }
+    }
+};
+```
+
+### Q: How do I handle action errors?
+A: Implement comprehensive error handling:
+```typescript
+const robustAction: Action = {
+    handler: async (runtime, message, state) => {
+        try {
+            // 1. Pre-execution checks
+            await this.preCheck(runtime, state);
+            
+            // 2. Main operation with retry
+            const result = await retry(
+                () => performOperation(),
+                {
+                    attempts: 3,
+                    backoff: 'exponential'
+                }
+            );
+            
+            // 3. Post-execution cleanup
+            await this.postProcess(runtime, result, state);
+            
+            return result;
+        } catch (error) {
+            // 4. Error classification
+            if (error instanceof ValidationError) {
+                runtime.logger.warn('Validation failed', error);
+                throw error;
+            }
+            
+            if (error instanceof SystemError) {
+                runtime.logger.error('System error', error);
+                await this.systemErrorRecovery(runtime, state);
+                throw error;
+            }
+            
+            // 5. Default error handling
+            runtime.logger.error('Unexpected error', error);
+            throw new ActionError(this.name, error.message);
+        }
+    }
+};
+```
+
+### Q: Why are actions defined in ALLCAPS but matched case-insensitively?
+A: Actions are defined in ALLCAPS (e.g., "TAKE_ORDER") for several reasons:
+1. **Visual Distinction**: Makes actions stand out in code and documentation
+2. **Convention**: Follows common practice for constant/enum values
+3. **Developer Experience**: Easier to spot in logs and debugging
+
+However, they are matched case-insensitively to:
+1. **Improve Robustness**: Handles variations in LLM output formatting
+2. **Reduce Errors**: Prevents matching failures due to case mismatches
+3. **Flexibility**: Allows for natural language variations
+
+### Q: How do I handle action state persistence?
+A: Use the runtime's state management capabilities:
+```typescript
+const statefulAction: Action = {
+    handler: async (runtime, message, state) => {
+        // 1. Load persisted state
+        const savedState = await runtime.messageManager.getMemory({
+            type: "action_state",
+            id: message.id
+        });
+        
+        // 2. Update state
+        const newState = {
+            ...savedState,
+            timestamp: Date.now(),
+            updates: []
+        };
+        
+        // 3. Persist state atomically
+        await runtime.messageManager.saveMemory({
+            type: "action_state",
+            content: newState
+        });
+        
+        // 4. Return updated state
+        return newState;
+    }
+};
+```
+
+### Q: How do I implement action rollback on failure?
+A: Use a transaction-like pattern:
+```typescript
+const rollbackableAction: Action = {
+    async handler(runtime, message, state) {
+        const changes = [];
+        
+        try {
+            // 1. First operation
+            const result1 = await operation1();
+            changes.push({ op: 'operation1', data: result1 });
+            
+            // 2. Second operation
+            const result2 = await operation2();
+            changes.push({ op: 'operation2', data: result2 });
+            
+            return { success: true };
+        } catch (error) {
+            // Rollback in reverse order
+            for (const change of changes.reverse()) {
+                await this.rollbackOperation(change.op, change.data);
+            }
+            throw error;
+        }
+    }
+};
+```
+
+### Q: How do I manage action timeouts and retries?
+A: Implement a robust timeout and retry mechanism:
+```typescript
+const reliableAction: Action = {
+    async handler(runtime, message, state) {
+        const options = {
+            timeout: 30000,    // 30 second timeout
+            retries: 3,        // Maximum 3 retries
+            backoff: {         // Exponential backoff
+                initial: 1000,
+                multiplier: 2,
+                maxDelay: 10000
+            }
+        };
+        
+        let attempt = 0;
+        while (attempt < options.retries) {
+            try {
+                const result = await Promise.race([
+                    this.operation(),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Timeout')), 
+                        options.timeout)
+                    )
+                ]);
+                return result;
+            } catch (error) {
+                attempt++;
+                if (attempt === options.retries) throw error;
+                
+                const delay = Math.min(
+                    options.backoff.initial * Math.pow(options.backoff.multiplier, attempt),
+                    options.backoff.maxDelay
+                );
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+};
+```
+
+_Note: This FAQ will be updated with new questions and answers as they arise from ongoing development and user feedback._
