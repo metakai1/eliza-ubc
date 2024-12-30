@@ -105,6 +105,124 @@ This document analyzes the execution flow of the save memory functionality, focu
 }
 ```
 
+## Execution Flow Diagrams
+
+### 1. High-Level Component Flow
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant E as Evaluator
+    participant P as Provider
+    participant A as Action
+    participant DB as Knowledge DB
+
+    U->>E: SAVE_MEMORY
+    E->>E: validate()
+    E->>P: get state
+    P->>P: check command
+    P->>P: fetch recent messages
+    P->>P: update state
+    P->>A: handle save
+    A->>A: validate state
+    A->>A: get message
+    A->>DB: save message
+    A-->>U: confirmation/error
+```
+
+### 2. State Transitions
+```mermaid
+stateDiagram-v2
+    [*] --> InitialState
+    InitialState --> ValidatedState: Evaluator.validate()
+    ValidatedState --> MessageSelectedState: Provider.get()
+    MessageSelectedState --> SaveAttemptState: Action.handler()
+    SaveAttemptState --> SaveSuccessState: knowledge.set()
+    SaveAttemptState --> SaveErrorState: error
+    SaveSuccessState --> [*]
+    SaveErrorState --> [*]
+
+    state InitialState {
+        hasState: true
+        roomId: string
+    }
+
+    state ValidatedState {
+        command: validated
+        matchedText: string
+    }
+
+    state MessageSelectedState {
+        shouldSave: true
+        messageToSave: Memory
+    }
+
+    state SaveAttemptState {
+        processing: true
+        targetMessage: string
+    }
+```
+
+### 3. Message Selection Flow
+```mermaid
+flowchart TD
+    A[Start] --> B{Is SAVE_MEMORY?}
+    B -->|Yes| C[Get Recent Messages]
+    B -->|No| D[Return Unchanged State]
+    C --> E{Find Last Agent Message}
+    E -->|Found| F[Update State]
+    E -->|Not Found| G[Log No Message]
+    F --> H[Return Updated State]
+    G --> I[Return Original State]
+```
+
+### 4. Error Handling Flow
+```mermaid
+flowchart TD
+    A[Action Handler] --> B{Has State?}
+    B -->|No| C[Return Error]
+    B -->|Yes| D{shouldSave True?}
+    D -->|No| E[Abort Save]
+    D -->|Yes| F{Has messageToSave?}
+    F -->|No| G[Log Error]
+    F -->|Yes| H[Attempt Save]
+    H --> I{Save Success?}
+    I -->|Yes| J[Return Success]
+    I -->|No| K[Return Error]
+```
+
+### 5. Data Flow
+```mermaid
+flowchart LR
+    subgraph Input
+        A[SAVE_MEMORY Command] --> B[Recent Messages]
+    end
+    subgraph Processing
+        B --> C{Message Selection}
+        C --> D[State Update]
+        D --> E[Save Operation]
+    end
+    subgraph Output
+        E --> F[Success Message]
+        E --> G[Error Message]
+    end
+```
+
+### 6. State Propagation
+```mermaid
+sequenceDiagram
+    participant S as Initial State
+    participant P as Provider State
+    participant A as Action State
+    participant R as Result State
+
+    S->>P: Copy State
+    Note over P: Add shouldSave
+    P->>A: Propagate State
+    Note over A: Add messageToSave
+    A->>R: Final State
+    Note over R: Include save result
+```
+
 ## Issues Identified
 
 ### 1. Message Selection Issue
@@ -172,3 +290,27 @@ state.messageToSave = messageToSave;
 2. Add additional logging for state transitions
 3. Enhance error handling with specific error types
 4. Add validation for message content before save attempt
+
+## Current State vs Desired State
+
+### Current Implementation
+```mermaid
+flowchart TD
+    A[SAVE_MEMORY Command] --> B[Provider]
+    B --> C[Store Command Message]
+    C --> D[Action Handler]
+    D --> E[Attempt Save Command]
+    E --> F[Error]
+```
+
+### Desired Implementation
+```mermaid
+flowchart TD
+    A[SAVE_MEMORY Command] --> B[Provider]
+    B --> C[Get Recent Messages]
+    C --> D[Find Last Agent Message]
+    D --> E[Store Target Message]
+    E --> F[Action Handler]
+    F --> G[Save Target Message]
+    G --> H[Success]
+```
