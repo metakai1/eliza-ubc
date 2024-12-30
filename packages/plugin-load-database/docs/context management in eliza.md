@@ -406,6 +406,95 @@ In this example, the action:
 - Uses that context to determine temperature unit
 - Doesn't add to the context, but produces a response informed by the context
 
+### Q: How do evaluators affect the agent's behavior and future context?
+A: Evaluators serve as quality control for the agent's responses. While they don't directly modify the immediate context, they can affect the agent's behavior in several ways:
+
+1. **Response Rejection**:
+```typescript
+const consistencyEvaluator: Evaluator = {
+    name: "contextConsistency",
+    handler: async (runtime, message, state) => {
+        // Check if response contradicts previous context
+        const isConsistent = checkConsistency(
+            message.content,
+            state.recentMessages
+        );
+        
+        return {
+            pass: isConsistent,
+            reason: isConsistent 
+                ? "Response aligns with context"
+                : "Response contradicts previous statements"
+        };
+    }
+};
+```
+
+2. **Indirect Context Influence**:
+   - Failed evaluations can trigger response regeneration
+   - New response gets fresh context
+   - Evaluation results may be stored in memory
+   - Future providers can access evaluation history
+
+3. **Learning Opportunities**:
+```typescript
+const learningEvaluator: Evaluator = {
+    name: "learningEvaluator",
+    handler: async (runtime, message, state) => {
+        // Store evaluation result for future context
+        await runtime.messageManager.saveMemory({
+            type: "evaluation",
+            content: {
+                evaluation: "consistency",
+                result: "failed",
+                reason: "Contradicted user preference"
+            }
+        });
+        
+        // This can be used by providers in future interactions
+        return {
+            pass: false,
+            reason: "Response needs improvement"
+        };
+    }
+};
+```
+
+4. **Context Chain**:
+```mermaid
+graph TD
+    R[Response] --> E[Evaluator]
+    E -->|Pass| S[Save Response]
+    E -->|Fail| N[New Response]
+    N --> P[New Provider Context]
+    S --> F[Future Context]
+```
+
+5. **Example Provider Using Evaluation History**:
+```typescript
+class ResponseQualityProvider implements Provider {
+    async get(runtime: IAgentRuntime, message: Memory, state: State) {
+        // Get recent evaluation history
+        const recentEvals = await runtime.messageManager.getMemories({
+            type: "evaluation",
+            count: 5
+        });
+        
+        // Use it to guide response
+        return `
+        RESPONSE_QUALITY_GUIDANCE:
+        ${recentEvals.map(e => `- Avoid: ${e.content.reason}`).join('\n')}
+        `;
+    }
+}
+```
+
+So while evaluators don't directly modify the current context, they create a feedback loop that influences:
+1. Whether the current response is accepted
+2. What context is available for future interactions
+3. How providers shape future responses
+4. The agent's learning and adaptation over time
+
 ### Q: How does the state object get populated with data like actorsData and userId?
 A: The state object is populated by the runtime's [composeState](cci:1://file:///home/kai/eliza/eliza/packages/core/src/runtime.ts:1:1-1:1) method before any providers or actions run. Here's the flow:
 
