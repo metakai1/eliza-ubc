@@ -1,4 +1,4 @@
-import { Plugin, AgentRuntime, knowledge, stringToUuid, generateText, settings, Action, elizaLogger, MemoryManager, EvaluationExample } from "@ai16z/eliza";
+import { Plugin, AgentRuntime, knowledge, stringToUuid, generateText, settings, Action, elizaLogger, MemoryManager, EvaluationExample, Content } from "@ai16z/eliza";
 import type { KnowledgeItem } from "@ai16z/eliza";
 
 import {
@@ -27,7 +27,10 @@ const saveThisAction: Action = {
     ) => {
         try {
 
-            elizaLogger.info(state);
+            if (!state) {
+                elizaLogger.error("[SaveThisAction] handler.start - no state");
+                return state;
+            }
 
             // Only proceed if explicitly requested via state
             if (!state?.shouldSave) {
@@ -46,17 +49,6 @@ const saveThisAction: Action = {
                 .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
                 .map(msg => msg.content.text)
                 .join("\n\n");
-
-            if (callback) {
-                await callback({
-                    text: "Summary in progress...",
-                    content: {
-                        text: "Summary in progress..."
-                    }
-                }, []);
-            }  else {
-                elizaLogger.error('[SaveThisAction] No callback');
-            }
 
             elizaLogger.info("Recent messages:", recentMessagesText);
 
@@ -96,11 +88,21 @@ ${recentMessagesText}`,
 
             await knowledge.set(runtime as AgentRuntime, memoryToSave);
 
+            // TODO: callback is undefined.  Need to pass some callback from Provider.
             if (callback) {
-                callback({
-//                    text: `I've stored this information: "${saveKnowledge}"`,
+                await callback({
                     text: `I've stored the information for you`,
-                });
+                    type: "text"
+                }, [{
+                    id: stringToUuid(`save_this_confirmation_${Date.now()}`),
+                    userId: message.userId,
+                    agentId: message.agentId,
+                    roomId: message.roomId,
+                    content: {
+                        text: "I've stored the information for you",
+                        type: "text"
+                    }
+                }]);
                 return;
             }
 
@@ -122,7 +124,8 @@ ${recentMessagesText}`,
 };
 
 export const saveThisProvider: Provider = {
-    get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+    get: async (runtime: IAgentRuntime, message: Memory,
+        state?: State, callback?: HandlerCallback ) => {
         const text = message.content?.text?.toLowerCase() || '';
 
         // Trigger if message starts with "save this"
@@ -136,6 +139,14 @@ export const saveThisProvider: Provider = {
                 elizaLogger.error('saveThisProvider: state.shouldSave is faised');
             }
 
+            //elizaLogger.info(state.recentMessages);
+            elizaLogger.info("saveThisProvider: state.shouldSave", state.shouldSave);
+
+            // need to figure out how to pass a callback into runtime.processActions
+            //const mycallback = async (response: Content, files?: Memory[]): Promise<Memory[]> => {
+                // to be implemented
+            //};
+
             // Then trigger the SAVE_THIS action
             await runtime.processActions(message, [{
                 id: stringToUuid(`save_this_response_${Date.now()}`),
@@ -145,8 +156,11 @@ export const saveThisProvider: Provider = {
                 content: {
                     action: 'SAVE_THIS',
                     text: 'Saving previous message...'
-                }
-            }]);
+                },
+
+            }], state=state,
+                //callback=mycallback  figure out what this should be
+        );
         }
 
         return;
