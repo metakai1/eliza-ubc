@@ -7,7 +7,7 @@ import { LensAgentClient } from "@ai16z/client-lens";
 import { SlackClientInterface } from "@ai16z/client-slack";
 import { TelegramClientInterface } from "@ai16z/client-telegram";
 import { TwitterClientInterface } from "@ai16z/client-twitter";
-import { databaseLoaderPlugin } from "@ai16z/plugin-load-database";
+import { saveThisPlugin } from "@ai16z/plugin-save-this";
 import {
     AgentRuntime,
     CacheManager,
@@ -533,7 +533,7 @@ export async function createAgent(
         // character.plugins are handled when clients are added
         plugins: [
             bootstrapPlugin,
-            databaseLoaderPlugin,
+            saveThisPlugin,
             getSecret(character, "CONFLUX_CORE_PRIVATE_KEY")
                 ? confluxPlugin
                 : null,
@@ -601,7 +601,6 @@ export async function createAgent(
             getSecret(character, "TON_PRIVATE_KEY") ? tonPlugin : null,
             getSecret(character, "SUI_PRIVATE_KEY") ? suiPlugin : null,
             getSecret(character, "STORY_PRIVATE_KEY") ? storyPlugin : null,
-            spreadsheetPlugin // Always include spreadsheet plugin
         ].filter(Boolean),
         providers: [],
         actions: [],

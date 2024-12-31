@@ -7,17 +7,12 @@ import {
     Memory,
     State,
     Provider,
-    HandlerCallback
+    HandlerCallback,
 } from "@ai16z/eliza";
 
-interface SaveMemoryState extends State {
-    shouldSave?: boolean;
-    messageToSave?: Memory;
-}
-
-const saveMemoryAction: Action = {
-    name: "SAVE_MEMORY",
-    description: "Stores important information in the agent's long-term knowledge base",
+const saveThisAction: Action = {
+    name: "SAVE_THIS",
+    description: "Stores important information from the conversation in the agent's long-term knowledge base",
     similes: [],
     validate: async (runtime: IAgentRuntime, message: Memory) => {
         return Promise.resolve(!!message?.content?.text);
@@ -26,11 +21,19 @@ const saveMemoryAction: Action = {
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
-        state: SaveMemoryState,
+        state: State,
         _options: { [key: string]: unknown },
         callback?: HandlerCallback
     ) => {
         try {
+
+            elizaLogger.info(state);
+
+            // Only proceed if explicitly requested via state
+            if (!state?.shouldSave) {
+                elizaLogger.info('[SaveThisAction] handler.abort - Save not requested in state');
+                return state; // Important: Return the unchanged state
+            }
             // Get recent messages
             const recentMessages = await runtime.messageManager.getMemories({
                 roomId: message.roomId,
@@ -51,9 +54,11 @@ const saveMemoryAction: Action = {
                         text: "Summary in progress..."
                     }
                 }, []);
+            }  else {
+                elizaLogger.error('[SaveThisAction] No callback');
             }
 
-            //elizaLogger.info("Recent messages:", recentMessagesText);
+            elizaLogger.info("Recent messages:", recentMessagesText);
 
             const saveKnowledge = await generateText({
                 runtime,
@@ -62,7 +67,7 @@ The following messages are from a conversation between an ai agent and a user.
 The most recent 7 messages are sent to this query, ordered from oldest to newest.  Some messages from
 the user may be included.  The last message is the "save this" request from the user, which is then triggers this query. Realize that conversation history may include agent responses \
 from previous user queries.  You should determine by the flow of conversation what
-information the user is wanting to save.
+information the user is wanting to save. Prioritize saving the most recent agent response.
 
 The user my also append additional words to the "save this" request, which may be relevant in
 deciding what information for you to save. For example, he/she could say "save this information about cars".
@@ -92,14 +97,12 @@ ${recentMessagesText}`,
             await knowledge.set(runtime as AgentRuntime, memoryToSave);
 
             if (callback) {
-                await callback({
-                    text: `I've stored this information: "${saveKnowledge}"`,
-                    content: {
-                        text: `I've stored this information: "${saveKnowledge}"`
-                    }
-                }, []);
+                callback({
+//                    text: `I've stored this information: "${saveKnowledge}"`,
+                    text: `I've stored the information for you`,
+                });
+                return;
             }
-            return true;
 
         } catch (error) {
             elizaLogger.error('[Action] handler.error:', error);
@@ -107,6 +110,7 @@ ${recentMessagesText}`,
                 await callback({
                     text: "Sorry, I encountered an error while saving.",
                     content: {
+                        success: false,
                         text: "Sorry, I encountered an error while saving."
                     }
                 }, []);
@@ -117,8 +121,8 @@ ${recentMessagesText}`,
     examples: []
 };
 
-export const memoryStateProvider: Provider = {
-    get: async (runtime: IAgentRuntime, message: Memory, state?: SaveMemoryState) => {
+export const saveThisProvider: Provider = {
+    get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
         const text = message.content?.text?.toLowerCase() || '';
 
         // Trigger if message starts with "save this"
@@ -126,31 +130,34 @@ export const memoryStateProvider: Provider = {
             // Modify state in place first
             if (state) {
                 state.shouldSave = true;
-                //state.messageToSave = message;
             }
 
-            // Then trigger the SAVE_MEMORY action
+            if(!state.shouldSave) {
+                elizaLogger.error('saveThisProvider: state.shouldSave is faised');
+            }
+
+            // Then trigger the SAVE_THIS action
             await runtime.processActions(message, [{
-                id: stringToUuid(`save_memory_response_${Date.now()}`),
+                id: stringToUuid(`save_this_response_${Date.now()}`),
                 userId: message.userId,
                 agentId: message.agentId,
                 roomId: message.roomId,
                 content: {
-                    action: 'SAVE_MEMORY',
+                    action: 'SAVE_THIS',
                     text: 'Saving previous message...'
                 }
             }]);
         }
 
-        return state;
+        return;
     }
 };
 
 
-export const databaseLoaderPlugin: Plugin = {
-    name: "database-loader",
-    description: "Plugin for managing and utilizing persistent memory storage",
-    actions: [saveMemoryAction],
+export const saveThisPlugin: Plugin = {
+    name: "save-this",
+    description: "Plugin for saving important information from conversations using a save this keyphrase",
+    actions: [saveThisAction],
     evaluators: [],
-    providers: [memoryStateProvider]
+    providers: [saveThisProvider]
 };

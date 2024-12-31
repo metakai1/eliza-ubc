@@ -1,0 +1,24 @@
+{
+    "name": "@ai16z/plugin-save-this",
+    "version": "0.0.1",
+    "description": "Plugin for saving important information from conversations",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "type": "module",
+    "dependencies": {
+        "@ai16z/eliza": "workspace:*"
+    },
+    "scripts": {
+        "build": "tsc",
+        "example": "tsx examples/basic-usage.ts"
+    },
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "devDependencies": {
+        "tsx": "^4.7.0"
+    }
+}
