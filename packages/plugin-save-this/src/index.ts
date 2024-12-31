@@ -57,13 +57,14 @@ const saveThisAction: Action = {
                 context: `\
 The following messages are from a conversation between an ai agent and a user.
 The most recent 7 messages are sent to this query, ordered from oldest to newest.  Some messages from
-the user may be included.  The last message is the "save this" request from the user, which is then triggers this query. Realize that conversation history may include agent responses \
-from previous user queries.  You should determine by the flow of conversation what
-information the user is wanting to save. Prioritize saving the most recent agent response.
+the user may be included.  The last message is the "save this" request from the user, which is then triggers this query.
+Realize that conversation history may include agent responses from previous user queries.
+You should determine by the flow of conversation what information the user is wanting to save.
+Prioritize saving the most recent agent response.
 
-The user my also append additional words to the "save this" request, which may be relevant in
+The user may also append additional words to the "save this" request, which may be relevant in
 deciding what information for you to save. For example, he/she could say "save this information about cars".
-By those words, you can determine what information the wants to focus on.
+By those words, you can determine what information the user wants to focus on.
 
 Save instructions: Do not store information about the user. Focus on saving knowledge, not conversation
 history. Don't save what the conversation is about, but rather the facts and details contained in the
